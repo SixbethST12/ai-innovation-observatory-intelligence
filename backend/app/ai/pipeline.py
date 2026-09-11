@@ -22,7 +22,7 @@ NOTES:
     - Runs on CPU; expect ~15-60s per publication with qwen2.5:3b.
 """
 
-from datetime import datetime
+from datetime import datetime, timezone
 
 from ..database import SessionLocal
 from ..models import PublicationRow
@@ -81,7 +81,7 @@ def process_pending(limit: int | None = None) -> dict:
                 pub.ai_relevance = rel
                 pub.ai_engine = engine
                 pub.ai_processed = True
-                pub.ai_processed_at = datetime.now(datetime.UTC)
+                pub.ai_processed_at = datetime.now(timezone.utc)
                 session.commit()
                 processed += 1
 
