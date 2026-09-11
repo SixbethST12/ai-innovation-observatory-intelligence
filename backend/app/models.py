@@ -47,6 +47,7 @@ class PublicationRow(Base):
     ai_relevance = Column(Text, nullable=True)         # relevance-to-BOT note
     ai_processed = Column(Boolean, default=False, nullable=False)
     ai_processed_at = Column(DateTime, nullable=True)
+    ai_engine = Column(String, nullable=True)          # "ollama" | "rule-based"
 
     # Timestamps
     collected_at = Column(DateTime, server_default=func.now(), nullable=False)

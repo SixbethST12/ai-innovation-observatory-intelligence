@@ -29,7 +29,7 @@ DATABASE_URL = os.getenv("DATABASE_URL", f"sqlite:///{BACKEND_DIR / 'observatory
 
 # LLM (Layer 4)
 OLLAMA_URL = os.getenv("OLLAMA_URL", "http://localhost:11434")
-LLM_MODEL = os.getenv("LLM_MODEL", "qwen2.5:1.5b")
+LLM_MODEL = os.getenv("LLM_MODEL", "qwen2.5:3b")
 
 # API metadata
 API_TITLE = "AI Innovation Observatory API"
