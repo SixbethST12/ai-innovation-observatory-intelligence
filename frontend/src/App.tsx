@@ -18,7 +18,9 @@ import Dashboard from "@/pages/Dashboard";
 import Publications from "@/pages/Publications";
 import Trends from "@/pages/Trends";
 import SearchPage from "@/pages/Search";
-import ComingSoon from "@/pages/ComingSoon";
+import TopicClassification from "@/pages/TopicClassification";
+import KnowledgeBase from "@/pages/KnowledgeBase";
+import Alerts from "@/pages/Alerts";
 
 const NAV = [
   { key: "dashboard",    label: "Dashboard",              icon: LayoutDashboard },
@@ -167,9 +169,10 @@ export default function App() {
             {page === "publications" && <Publications />}
             {page === "trends" && <Trends />}
             {page === "search" && <SearchPage />}
-            {(page === "topics" || page === "kb" || page === "alerts") && (
-              <ComingSoon title={NAV.find(n => n.key === page)?.label || "Coming soon"} />
-            )}
+            {page === "kb" && <KnowledgeBase />}
+            {page === "alerts" && <Alerts />}
+            {page === "topics" && <TopicClassification />}
+
           </div>
         </main>
       </div>
