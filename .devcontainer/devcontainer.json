@@ -1,0 +1,9 @@
+{
+  "name": "AI Observatory",
+  "forwardPorts": [5173, 8000, 11434],
+  "portsAttributes": {
+    "5173": { "label": "Frontend",   "onAutoForward": "silent" },
+    "8000": { "label": "Backend API","onAutoForward": "silent" },
+    "11434":{ "label": "Ollama",     "onAutoForward": "silent" }
+  }
+}
