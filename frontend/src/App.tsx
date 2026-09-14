@@ -4,13 +4,9 @@
 import { useState } from "react";
 import {
   LayoutDashboard, FileText, TrendingUp, Tags, Search as SearchIcon,
-  BookOpen, Bell, Search, ChevronDown, UserCircle, Shield,
-  Database, Cog, ScrollText, Users,
+  BookOpen, Bell, Search, Shield,
+  Database, Cog, ScrollText, Users, Activity,
 } from "lucide-react";
-import {
-  DropdownMenu, DropdownMenuContent, DropdownMenuItem,
-  DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 
 import Login from "@/pages/Login";
 import Dashboard from "@/pages/Dashboard";
@@ -25,11 +21,12 @@ import ManageSources from "@/pages/admin/ManageSources";
 import ManageTopics from "@/pages/admin/ManageTopics";
 import SystemLogs from "@/pages/admin/SystemLogs";
 import ManageUsers from "@/pages/admin/ManageUsers";
+import ServiceControl from "@/pages/admin/ServiceControl";
 
 type Role = "analyst" | "admin";
 type PageKey =
   | "dashboard" | "publications" | "trends" | "topics" | "search" | "kb" | "alerts"
-  | "admin-dashboard" | "admin-sources" | "admin-topics" | "admin-logs" | "admin-users";
+  | "admin-dashboard" | "admin-sources" | "admin-topics" | "admin-logs" | "admin-users" | "admin-services";
 
 const ANALYST_NAV = [
   { key: "dashboard",    label: "Dashboard",              icon: LayoutDashboard },
@@ -47,6 +44,7 @@ const ADMIN_NAV = [
   { key: "admin-topics",    label: "Manage Topics",  icon: Tags },
   { key: "admin-logs",      label: "System Logs",    icon: ScrollText },
   { key: "admin-users",     label: "Manage Users",   icon: Users },
+  { key: "admin-services",  label: "Service Control",        icon: Activity },
   { key: "alerts",          label: "Alerts & Notifications", icon: Bell },
 ] as const;
 
@@ -106,33 +104,15 @@ export default function App() {
               </span>
             </button>
 
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <button className="w-10 h-10 rounded-full bg-white border border-[#e0d6bf] flex items-center justify-center text-[var(--bot-navy)] hover:bg-[var(--bot-gold-soft)] transition">
-                  <span className="w-7 h-7 rounded-full bg-gradient-to-br from-[#e0c57f] to-[#c8a04a] text-[#1e3a8a] flex items-center justify-center text-xs font-extrabold">
-                    {role[0].toUpperCase()}
-                  </span>
-                </button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-56">
-                <DropdownMenuLabel>Signed in as {role}</DropdownMenuLabel>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem disabled>
-                  <UserCircle className="mr-2 h-4 w-4" />
-                  <div>
-                    <div className="font-semibold text-sm capitalize">{role}</div>
-                    <div className="text-xs text-gray-500">
-                      {role === "admin" ? "Full system access" : "View & search publications"}
-                    </div>
-                  </div>
-                </DropdownMenuItem>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={logout}>
-                  <Shield className="mr-2 h-4 w-4" />
-                  Sign out
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
+            <button
+              onClick={logout}
+              className="w-10 h-10 rounded-full bg-white border border-[#e0d6bf] flex items-center justify-center text-[var(--bot-navy)] hover:bg-red-50 hover:border-red-300 hover:text-red-600 transition"
+              title="Sign out"
+            >
+              <span className="w-7 h-7 rounded-full bg-gradient-to-br from-[#e0c57f] to-[#c8a04a] text-[#1e3a8a] flex items-center justify-center text-xs font-extrabold">
+                {role[0].toUpperCase()}
+              </span>
+            </button>
 
             <img src="/bot-crest.jpg" alt="BoT crest" className="h-14 w-auto" />
           </div>
@@ -221,6 +201,7 @@ export default function App() {
             {page === "admin-topics" && <ManageTopics />}
             {page === "admin-logs" && <SystemLogs />}
             {page === "admin-users" && <ManageUsers />}
+            {page === "admin-services" && <ServiceControl />}
           </div>
         </main>
       </div>

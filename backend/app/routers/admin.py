@@ -163,3 +163,32 @@ def delete_user(user_id: int):
     except ValueError as e:
         from fastapi import HTTPException
         raise HTTPException(400, str(e))
+
+
+# ============================================================
+# Service control (prototype)
+# ============================================================
+from .. import services as svc
+
+
+@router.get("/services")
+def list_services():
+    return svc.get_status()
+
+
+@router.post("/services/{name}/restart")
+def restart_service(name: str):
+    try:
+        return svc.restart(name)
+    except ValueError as e:
+        from fastapi import HTTPException
+        raise HTTPException(400, str(e))
+
+
+@router.get("/services/{name}/logs")
+def service_logs(name: str, lines: int = 60):
+    try:
+        return svc.get_logs(name, lines)
+    except ValueError as e:
+        from fastapi import HTTPException
+        raise HTTPException(400, str(e))
