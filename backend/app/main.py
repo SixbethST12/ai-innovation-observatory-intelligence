@@ -43,9 +43,10 @@ def health():
 
 
 # Routers are imported AFTER app is created to avoid circular imports
-from .routers import publications, search, trends, stats  # noqa: E402
+from .routers import publications, search, trends, stats, admin  # noqa: E402
 
 app.include_router(publications.router)
 app.include_router(search.router)
 app.include_router(trends.router)
 app.include_router(stats.router)
+app.include_router(admin.router)
