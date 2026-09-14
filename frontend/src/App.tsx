@@ -5,7 +5,7 @@ import { useState } from "react";
 import {
   LayoutDashboard, FileText, TrendingUp, Tags, Search as SearchIcon,
   BookOpen, Bell, Search, ChevronDown, UserCircle, Shield,
-  Database, Cog, ScrollText,
+  Database, Cog, ScrollText, Users,
 } from "lucide-react";
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem,
@@ -21,11 +21,15 @@ import TopicClassification from "@/pages/TopicClassification";
 import KnowledgeBase from "@/pages/KnowledgeBase";
 import Alerts from "@/pages/Alerts";
 import AdminDashboard from "@/pages/admin/AdminDashboard";
+import ManageSources from "@/pages/admin/ManageSources";
+import ManageTopics from "@/pages/admin/ManageTopics";
+import SystemLogs from "@/pages/admin/SystemLogs";
+import ManageUsers from "@/pages/admin/ManageUsers";
 
 type Role = "analyst" | "admin";
 type PageKey =
   | "dashboard" | "publications" | "trends" | "topics" | "search" | "kb" | "alerts"
-  | "admin-dashboard";
+  | "admin-dashboard" | "admin-sources" | "admin-topics" | "admin-logs" | "admin-users";
 
 const ANALYST_NAV = [
   { key: "dashboard",    label: "Dashboard",              icon: LayoutDashboard },
@@ -38,7 +42,11 @@ const ANALYST_NAV = [
 ] as const;
 
 const ADMIN_NAV = [
-  { key: "admin-dashboard", label: "Admin Panel",           icon: Cog },
+  { key: "admin-dashboard", label: "Admin Panel",    icon: Cog },
+  { key: "admin-sources",   label: "Manage Sources", icon: Database },
+  { key: "admin-topics",    label: "Manage Topics",  icon: Tags },
+  { key: "admin-logs",      label: "System Logs",    icon: ScrollText },
+  { key: "admin-users",     label: "Manage Users",   icon: Users },
 ] as const;
 
 export default function App() {
@@ -208,6 +216,10 @@ export default function App() {
             {page === "kb" && <KnowledgeBase />}
             {page === "alerts" && <Alerts />}
             {page === "admin-dashboard" && <AdminDashboard />}
+            {page === "admin-sources" && <ManageSources />}
+            {page === "admin-topics" && <ManageTopics />}
+            {page === "admin-logs" && <SystemLogs />}
+            {page === "admin-users" && <ManageUsers />}
           </div>
         </main>
       </div>

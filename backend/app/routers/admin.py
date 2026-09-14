@@ -120,3 +120,46 @@ def list_topics():
         {"slug": slug, "label": meta["label"], "keywords": meta["keywords"]}
         for slug, meta in TOPICS.items()
     ]
+
+
+# ============================================================
+# User management (prototype only)
+# ============================================================
+from pydantic import BaseModel
+from .. import users as users_store
+
+
+class UserCreate(BaseModel):
+    username: str
+    password: str
+    role: str
+    full_name: str = ""
+
+
+@router.get("/users")
+def list_users():
+    return users_store.list_users()
+
+
+@router.post("/users")
+def create_user(payload: UserCreate):
+    try:
+        return users_store.create_user(
+            username=payload.username,
+            password=payload.password,
+            role=payload.role,
+            full_name=payload.full_name,
+        )
+    except ValueError as e:
+        from fastapi import HTTPException
+        raise HTTPException(400, str(e))
+
+
+@router.delete("/users/{user_id}")
+def delete_user(user_id: int):
+    try:
+        users_store.delete_user(user_id)
+        return {"deleted": user_id}
+    except ValueError as e:
+        from fastapi import HTTPException
+        raise HTTPException(400, str(e))
