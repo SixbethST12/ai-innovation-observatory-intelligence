@@ -192,3 +192,14 @@ def service_logs(name: str, lines: int = 60):
     except ValueError as e:
         from fastapi import HTTPException
         raise HTTPException(400, str(e))
+
+
+# ============================================================
+# System alerts
+# ============================================================
+from ..alerts import generate_alerts
+
+
+@router.get("/alerts")
+def get_alerts():
+    return generate_alerts()
