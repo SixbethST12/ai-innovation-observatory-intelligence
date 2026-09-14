@@ -11,11 +11,18 @@ import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid,
 } from "recharts";
 import {
-  getStats, getTrends, getInstitutions, getEmerging, getPublications,
+  getStats, getTrends, getInstitutions, getEmerging, getPublications, getTimeline,
   type Stats, type TopicCount, type InstitutionCount, type EmergingTopic, type Publication,
 } from "@/lib/api";
 
 const COLORS = ["#1e40af", "#7c3aed", "#0d9488", "#c8a04a", "#16a34a", "#94a3b8"];
+
+// Per-topic palette for "Publications by topic" bars
+const TOPIC_COLORS = [
+  "#1e40af", "#7c3aed", "#0d9488", "#c8a04a",
+  "#16a34a", "#dc2626", "#0891b2", "#9333ea",
+  "#b45309", "#15803d", "#be185d",
+];
 
 function relevanceLevel(p: Publication): "high" | "medium" | "low" {
   const t = p.ai_topics ? p.ai_topics.split(",").filter(Boolean).length : 0;
@@ -30,6 +37,7 @@ export default function Dashboard() {
   const [institutions, setInstitutions] = useState<InstitutionCount[]>([]);
   const [emerging, setEmerging] = useState<EmergingTopic[]>([]);
   const [recent, setRecent] = useState<Publication[]>([]);
+  const [timeline, setTimeline] = useState<{ month: string; count: number }[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -39,13 +47,15 @@ export default function Dashboard() {
       getInstitutions(),
       getEmerging(3, 5),
       getPublications({ limit: 6 }),
+      getTimeline(),
     ])
-      .then(([s, t, i, e, r]) => {
+      .then(([s, t, i, e, r, tl]) => {
         setStats(s);
         setTopics(t);
         setInstitutions(i);
         setEmerging(e);
         setRecent(r);
+        setTimeline(tl);
       })
       .finally(() => setLoading(false));
   }, []);
@@ -59,6 +69,15 @@ export default function Dashboard() {
   }));
 
   const topEmerging = emerging[0];
+
+  // Keep only the last 12 months for a clean chart
+  const recentTimeline = (() => {
+    const cutoff = new Date();
+    cutoff.setMonth(cutoff.getMonth() - 12);
+    return timeline
+      .filter(t => new Date(t.month + "-01") >= cutoff)
+      .sort((a, b) => a.month.localeCompare(b.month));
+  })();
 
   return (
     <div>
@@ -135,9 +154,13 @@ export default function Dashboard() {
               <BarChart data={topicRows} layout="vertical" margin={{ left: 0, right: 16, top: 4, bottom: 4 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#eef2f7" horizontal={false} />
                 <XAxis type="number" stroke="#94a3b8" tick={{ fontSize: 11 }} />
-                <YAxis type="category" dataKey="label" width={120} stroke="#94a3b8" tick={{ fontSize: 11 }} interval={0} />
+                <YAxis type="category" dataKey="label" width={120} stroke="#94a3b8" tick={{ fontSize: 11, fontWeight: 700, fill: "#1e3a8a" }} interval={0} />
                 <Tooltip contentStyle={{ borderRadius: 8, border: "1px solid #e2e8f0", fontSize: 12 }} />
-                <Bar dataKey="count" fill="#1e40af" radius={[0, 6, 6, 0]} barSize={14} />
+                <Bar dataKey="count" radius={[0, 6, 6, 0]} barSize={14}>
+                  {topicRows.map((_, i) => (
+                    <Cell key={i} fill={TOPIC_COLORS[i % TOPIC_COLORS.length]} />
+                  ))}
+                </Bar>
               </BarChart>
             </ResponsiveContainer>
           </CardContent>
@@ -173,7 +196,29 @@ export default function Dashboard() {
         </Card>
       </div>
 
-      {/* Row 3 — Recent + Glance */}
+      {/* Row 3 — Publication timeline (full width) */}
+      <Card className="mb-6">
+        <CardHeader>
+          <CardTitle className="text-[15px] text-[var(--bot-navy)]">
+            Publication Timeline — last 12 months
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <ResponsiveContainer width="100%" height={260}>
+            <BarChart data={recentTimeline} margin={{ left: 0, right: 20, top: 5, bottom: 5 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#eef2f7" />
+              <XAxis dataKey="month" stroke="#94a3b8" tick={{ fontSize: 11 }} />
+              <YAxis stroke="#94a3b8" tick={{ fontSize: 11 }} allowDecimals={false} />
+              <Tooltip
+                contentStyle={{ borderRadius: 8, border: "1px solid #e2e8f0", fontSize: 12 }}
+              />
+              <Bar dataKey="count" fill="#c8a04a" radius={[6, 6, 0, 0]} barSize={28} />
+            </BarChart>
+          </ResponsiveContainer>
+        </CardContent>
+      </Card>
+
+      {/* Row 4 — Recent + Glance */}
       <div className="grid grid-cols-2 gap-5">
         {/* Recent publications */}
         <Card>
