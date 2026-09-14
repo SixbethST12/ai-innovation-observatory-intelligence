@@ -47,6 +47,7 @@ const ADMIN_NAV = [
   { key: "admin-topics",    label: "Manage Topics",  icon: Tags },
   { key: "admin-logs",      label: "System Logs",    icon: ScrollText },
   { key: "admin-users",     label: "Manage Users",   icon: Users },
+  { key: "alerts",          label: "Alerts & Notifications", icon: Bell },
 ] as const;
 
 export default function App() {
@@ -84,17 +85,20 @@ export default function App() {
           </div>
 
           <div className="flex items-center justify-end gap-3">
-            <button
-              onClick={() => setPage("search")}
-              className="w-10 h-10 rounded-full bg-white border border-[#e0d6bf] flex items-center justify-center text-[var(--bot-navy)] hover:bg-[var(--bot-gold-soft)] hover:border-[var(--bot-gold)] transition"
-              title="Search"
-            >
-              <Search size={18} />
-            </button>
+            {role === "analyst" && (
+              <button
+                onClick={() => setPage("search")}
+                className="w-10 h-10 rounded-full bg-white border border-[#e0d6bf] flex items-center justify-center text-[var(--bot-navy)] hover:bg-[var(--bot-gold-soft)] hover:border-[var(--bot-gold)] transition"
+                title="Search"
+              >
+                <Search size={18} />
+              </button>
+            )}
 
             <button
-              className="w-10 h-10 rounded-full bg-white border border-[#e0d6bf] flex items-center justify-center text-[var(--bot-navy)] relative hover:bg-[var(--bot-gold-soft)] transition"
-              title="Notifications"
+              onClick={() => setPage("alerts")}
+              className="w-10 h-10 rounded-full bg-white border border-[#e0d6bf] flex items-center justify-center text-[var(--bot-navy)] relative hover:bg-[var(--bot-gold-soft)] hover:border-[var(--bot-gold)] transition"
+              title="Alerts & Notifications"
             >
               <Bell size={18} />
               <span className="absolute -top-1 -right-1 bg-red-600 text-white text-[10px] font-bold rounded-full min-w-[18px] px-1.5 py-0.5 border-2 border-[var(--bot-cream)]">
@@ -139,45 +143,42 @@ export default function App() {
 
       <div className="grid grid-cols-[260px_1fr] flex-1 min-h-0">
         <aside className="bg-white border-r border-[#e2e8f0] p-5 flex flex-col gap-5 overflow-y-auto">
-          <nav className="flex flex-col gap-1">
-            {analystNav.map(({ key, label, icon: Icon }) => (
-              <button
-                key={key}
-                onClick={() => setPage(key as PageKey)}
-                className={`flex items-center gap-3 px-3.5 py-2.5 rounded-lg text-sm text-left transition ${
-                  page === key
-                    ? "bg-[var(--bot-gold-soft)] text-[var(--bot-navy)] font-bold shadow-[inset_3px_0_0_var(--bot-gold)]"
-                    : "text-[#334155] hover:bg-[var(--bot-gold-soft)] hover:text-[var(--bot-navy)]"
-                }`}
-              >
-                <Icon size={18} />
-                <span>{label}</span>
-              </button>
-            ))}
-          </nav>
+          {role === "analyst" && (
+            <nav className="flex flex-col gap-1">
+              {analystNav.map(({ key, label, icon: Icon }) => (
+                <button
+                  key={key}
+                  onClick={() => setPage(key as PageKey)}
+                  className={`flex items-center gap-3 px-3.5 py-2.5 rounded-lg text-sm text-left transition ${
+                    page === key
+                      ? "bg-[var(--bot-gold-soft)] text-[var(--bot-navy)] font-bold shadow-[inset_3px_0_0_var(--bot-gold)]"
+                      : "text-[#334155] hover:bg-[var(--bot-gold-soft)] hover:text-[var(--bot-navy)]"
+                  }`}
+                >
+                  <Icon size={18} />
+                  <span>{label}</span>
+                </button>
+              ))}
+            </nav>
+          )}
 
-          {adminNav.length > 0 && (
-            <div className="border-t border-[#e2e8f0] pt-4">
-              <div className="text-[10.5px] uppercase tracking-wider text-gray-500 font-bold mb-2 px-2">
-                Administration
-              </div>
-              <nav className="flex flex-col gap-1">
-                {adminNav.map(({ key, label, icon: Icon }) => (
-                  <button
-                    key={key}
-                    onClick={() => setPage(key as PageKey)}
-                    className={`flex items-center gap-3 px-3.5 py-2.5 rounded-lg text-sm text-left transition ${
-                      page === key
-                        ? "bg-[var(--bot-navy-soft)] text-[var(--bot-navy)] font-bold shadow-[inset_3px_0_0_var(--bot-navy)]"
-                        : "text-[#334155] hover:bg-[var(--bot-navy-soft)] hover:text-[var(--bot-navy)]"
-                    }`}
-                  >
-                    <Icon size={18} />
-                    <span>{label}</span>
-                  </button>
-                ))}
-              </nav>
-            </div>
+          {role === "admin" && (
+            <nav className="flex flex-col gap-1">
+              {adminNav.map(({ key, label, icon: Icon }) => (
+                <button
+                  key={key}
+                  onClick={() => setPage(key as PageKey)}
+                  className={`flex items-center gap-3 px-3.5 py-2.5 rounded-lg text-sm text-left transition ${
+                    page === key
+                      ? "bg-[var(--bot-navy-soft)] text-[var(--bot-navy)] font-bold shadow-[inset_3px_0_0_var(--bot-navy)]"
+                      : "text-[#334155] hover:bg-[var(--bot-navy-soft)] hover:text-[var(--bot-navy)]"
+                  }`}
+                >
+                  <Icon size={18} />
+                  <span>{label}</span>
+                </button>
+              ))}
+            </nav>
           )}
 
           <div className="border-t border-b border-[#e2e8f0] py-4 px-2">
