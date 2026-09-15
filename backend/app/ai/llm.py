@@ -34,7 +34,7 @@ from ..config import OLLAMA_URL, LLM_MODEL
 
 
 OLLAMA_GENERATE = f"{OLLAMA_URL}/api/generate"
-LLM_TIMEOUT = 60
+LLM_TIMEOUT = 180
 
 
 def _ollama_ask(prompt: str) -> str | None:
