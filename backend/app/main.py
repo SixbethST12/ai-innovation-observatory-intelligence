@@ -50,3 +50,8 @@ app.include_router(search.router)
 app.include_router(trends.router)
 app.include_router(stats.router)
 app.include_router(admin.router)
+
+
+# Ensure DB tables exist on startup
+from .database import init_db  # noqa: E402
+init_db()

@@ -1,0 +1,28 @@
+services:
+  backend:
+    build:
+      context: ./backend
+    container_name: observatory-backend
+    volumes:
+      - ./backend:/app
+    environment:
+      - OLLAMA_URL=http://host.docker.internal:11434
+      - DATABASE_URL=sqlite:////app/observatory.db
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    ports:
+      - "8000:8000"
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: ./frontend
+    container_name: observatory-frontend
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    ports:
+      - "5173:5173"
+    depends_on:
+      - backend
+    restart: unless-stopped
