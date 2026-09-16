@@ -30,7 +30,7 @@ BOT_DISCLAIMER = (
 
 def build_summary_prompt(title: str, text: str) -> str:
     """Ask for a 6-section summary in plain text."""
-    body = text.strip()[:2000]
+    body = text.strip()[:800]
     return f"""You are a research assistant for a central bank. Summarize the publication below.
 
 Use exactly these six section headers, each on its own line:
