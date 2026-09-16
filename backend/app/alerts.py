@@ -3,16 +3,12 @@ alerts.py — Derive system alerts from real job + service state.
 
 PURPOSE:
     Give analysts and admins a live list of things worth attention:
-    job outcomes, service outages, backlogs, stale data.
+    running job progress, job outcomes, service outages, backlogs.
 
 RESPONSIBILITIES:
-    generate_alerts() -> list of {id, level, title, message, timestamp, source}
-    Levels: critical | high | medium | info | success
+    generate_alerts() -> list of {id, level, title, message, timestamp, source, progress?}
 
-NOTES:
-    - Alerts are computed on demand — not persisted.
-    - Each alert has a stable id so the frontend can dismiss consistently
-      within a session (dismissal is client-side only for now).
+LEVELS: critical | high | medium | info | success
 """
 
 from datetime import datetime, timezone, timedelta
@@ -32,12 +28,25 @@ def _fmt(dt: str | None) -> str:
         return dt
 
 
+def _progress() -> dict:
+    """Current AI processing progress from the DB."""
+    db = SessionLocal()
+    try:
+        total = db.query(PublicationRow).count()
+        done = db.query(PublicationRow).filter(PublicationRow.ai_processed.is_(True)).count()
+        pending = total - done
+        return {"total": total, "done": done, "pending": pending}
+    finally:
+        db.close()
+
+
 def generate_alerts() -> list[dict]:
     alerts: list[dict] = []
     now = datetime.now(timezone.utc)
 
     jobs = get_jobs()
     services = get_services()
+    progress = _progress()
 
     # ---- Service health ----
     for svc in services:
@@ -55,14 +64,24 @@ def generate_alerts() -> list[dict]:
                 "id": f"svc-unhealthy-{svc['name']}",
                 "level": "high",
                 "title": f"{svc['name'].capitalize()} is unresponsive",
-                "message": f"Process is running (pid {svc['pid']}) but {svc['health_url']} did not return 200.",
+                "message": f"Process is running (pid {svc['pid']}) but health check failed.",
                 "timestamp": now.isoformat(),
                 "source": "Service Monitor",
             })
 
     # ---- Collect job ----
     collect = jobs.get("collect", {})
-    if collect["status"] == "error":
+    if collect["status"] == "running":
+        alerts.append({
+            "id": "job-collect-running",
+            "level": "info",
+            "title": "Data collection in progress",
+            "message": f"Started at {_fmt(collect.get('started_at'))}. Fetching publications from BIS, IMF, World Bank, CBK.",
+            "timestamp": collect.get("started_at") or now.isoformat(),
+            "source": "Collector",
+            "progress": {"running": True},
+        })
+    elif collect["status"] == "error":
         alerts.append({
             "id": "job-collect-error",
             "level": "high",
@@ -73,29 +92,29 @@ def generate_alerts() -> list[dict]:
         })
     elif collect["status"] == "done" and collect.get("result"):
         inserted = collect["result"].get("inserted", 0)
-        if inserted > 0:
-            alerts.append({
-                "id": f"collect-inserted-{collect.get('finished_at')}",
-                "level": "success",
-                "title": f"{inserted} new publication{'s' if inserted != 1 else ''} collected",
-                "message": f"Finished {_fmt(collect.get('finished_at'))}. "
-                           f"{collect['result'].get('skipped', 0)} duplicates skipped.",
-                "timestamp": collect.get("finished_at") or now.isoformat(),
-                "source": "Collector",
-            })
-        else:
-            alerts.append({
-                "id": f"collect-empty-{collect.get('finished_at')}",
-                "level": "info",
-                "title": "Collection finished — no new items",
-                "message": f"No new publications since last run ({_fmt(collect.get('finished_at'))}).",
-                "timestamp": collect.get("finished_at") or now.isoformat(),
-                "source": "Collector",
-            })
+        alerts.append({
+            "id": f"collect-result-{collect.get('finished_at')}",
+            "level": "success" if inserted > 0 else "info",
+            "title": f"{inserted} new publication{'s' if inserted != 1 else ''} collected" if inserted else "Collection finished — no new items",
+            "message": f"{collect['result'].get('skipped', 0)} duplicates skipped. Finished {_fmt(collect.get('finished_at'))}.",
+            "timestamp": collect.get("finished_at") or now.isoformat(),
+            "source": "Collector",
+        })
 
     # ---- AI job ----
     ai = jobs.get("ai", {})
-    if ai["status"] == "error":
+    if ai["status"] == "running":
+        pct = int((progress["done"] / progress["total"]) * 100) if progress["total"] else 0
+        alerts.append({
+            "id": "job-ai-running",
+            "level": "info",
+            "title": f"AI pipeline running — {progress['done']}/{progress['total']} processed",
+            "message": f"{progress['pending']} remaining. Started {_fmt(ai.get('started_at'))}.",
+            "timestamp": ai.get("started_at") or now.isoformat(),
+            "source": "AI Pipeline",
+            "progress": {"done": progress["done"], "total": progress["total"], "percent": pct, "running": True},
+        })
+    elif ai["status"] == "error":
         alerts.append({
             "id": "job-ai-error",
             "level": "high",
@@ -112,8 +131,7 @@ def generate_alerts() -> list[dict]:
                 "id": f"ai-processed-{ai.get('finished_at')}",
                 "level": "success",
                 "title": f"AI processed {processed} publication{'s' if processed != 1 else ''}",
-                "message": f"Summaries, topics, and relevance completed at "
-                           f"{_fmt(ai.get('finished_at'))}.",
+                "message": f"Summaries, topics, and relevance completed at {_fmt(ai.get('finished_at'))}.",
                 "timestamp": ai.get("finished_at") or now.isoformat(),
                 "source": "AI Pipeline",
             })
@@ -127,31 +145,24 @@ def generate_alerts() -> list[dict]:
                 "source": "AI Pipeline",
             })
 
-    # ---- DB-based checks ----
+    # ---- Pending backlog ----
+    if progress["pending"] > 20:
+        alerts.append({
+            "id": f"backlog-{progress['pending']}",
+            "level": "medium",
+            "title": f"{progress['pending']} publications awaiting AI processing",
+            "message": "Consider running the AI pipeline from the Admin Panel.",
+            "timestamp": now.isoformat(),
+            "source": "System",
+            "progress": {"done": progress["done"], "total": progress["total"], "percent": int((progress["done"]/progress["total"])*100) if progress["total"] else 0, "running": False},
+        })
+
+    # ---- Stale data ----
     db = SessionLocal()
     try:
-        total = db.query(PublicationRow).count()
-        pending = db.query(PublicationRow).filter(PublicationRow.ai_processed.is_(False)).count()
-
-        # Pending backlog
-        if pending > 20:
-            alerts.append({
-                "id": f"backlog-{pending}",
-                "level": "medium",
-                "title": f"{pending} publications awaiting AI processing",
-                "message": "Consider running the AI pipeline from the Admin Panel.",
-                "timestamp": now.isoformat(),
-                "source": "System",
-            })
-
-        # Stale data — no new pubs in 7 days
         cutoff = now - timedelta(days=7)
-        recent = (
-            db.query(PublicationRow)
-            .filter(PublicationRow.collected_at >= cutoff)
-            .count()
-        )
-        if total > 0 and recent == 0:
+        recent = db.query(PublicationRow).filter(PublicationRow.collected_at >= cutoff).count()
+        if progress["total"] > 0 and recent == 0:
             alerts.append({
                 "id": "stale-7d",
                 "level": "medium",
@@ -163,8 +174,7 @@ def generate_alerts() -> list[dict]:
     finally:
         db.close()
 
-    # ---- Order: critical > high > medium > info > success ----
+    # ---- Order ----
     order = {"critical": 0, "high": 1, "medium": 2, "info": 3, "success": 4}
-    alerts.sort(key=lambda a: (order.get(a["level"], 99), a["timestamp"]), reverse=False)
-
+    alerts.sort(key=lambda a: order.get(a["level"], 99))
     return alerts
