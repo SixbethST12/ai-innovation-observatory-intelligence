@@ -391,3 +391,93 @@ def retry_failed():
         return {"reset": count, "message": f"{count} rows reset for AI reprocessing"}
     finally:
         db.close()
+
+
+# ============================================================
+# Source management (user-added RSS)
+# ============================================================
+from ..models import Source
+
+
+class SourceCreate(BaseModel):
+    name: str
+    url: str
+
+
+@router.get("/sources/list")
+def list_user_sources(db: Session = Depends(get_db)):
+    """List user-added sources (built-in 4 are in the hardcoded /sources endpoint)."""
+    rows = db.query(Source).order_by(Source.added_at.desc()).all()
+    return [
+        {
+            "id": r.id, "name": r.name, "url": r.url, "method": r.method,
+            "active": r.active, "added_at": r.added_at.isoformat() if r.added_at else None,
+        }
+        for r in rows
+    ]
+
+
+@router.post("/sources/list")
+def add_source(payload: SourceCreate, db: Session = Depends(get_db)):
+    """Add a new RSS source and immediately test it."""
+    import requests
+    import feedparser
+
+    name = payload.name.strip()
+    url = payload.url.strip()
+    if not name or not url:
+        from fastapi import HTTPException
+        raise HTTPException(400, "Name and URL are required")
+
+    if db.query(Source).filter(Source.name == name).first():
+        from fastapi import HTTPException
+        raise HTTPException(400, f"Source '{name}' already exists")
+
+    # Test the feed
+    try:
+        feed = feedparser.parse(url)
+        if not feed.entries and feed.bozo:
+            from fastapi import HTTPException
+            raise HTTPException(400, f"Feed could not be parsed: {feed.bozo_exception}")
+    except Exception as e:
+        from fastapi import HTTPException
+        raise HTTPException(400, f"Feed unreachable: {e}")
+
+    src = Source(name=name, url=url, method="rss", added_by="admin")
+    db.add(src)
+    db.commit()
+    db.refresh(src)
+    return {
+        "id": src.id,
+        "name": src.name,
+        "url": src.url,
+        "active": src.active,
+        "entries_preview": len(feed.entries),
+    }
+
+
+@router.delete("/sources/list/{source_id}")
+def delete_source(source_id: int, db: Session = Depends(get_db)):
+    src = db.query(Source).filter(Source.id == source_id).first()
+    if not src:
+        from fastapi import HTTPException
+        raise HTTPException(404, f"Source {source_id} not found")
+    db.delete(src)
+    db.commit()
+    return {"deleted": source_id}
+
+
+@router.post("/sources/test")
+def test_source(payload: SourceCreate):
+    """Test a URL without saving it."""
+    import feedparser
+    try:
+        feed = feedparser.parse(payload.url.strip())
+        return {
+            "ok": True,
+            "entries": len(feed.entries),
+            "title": feed.feed.get("title", ""),
+            "bozo": feed.bozo,
+        }
+    except Exception as e:
+        return {"ok": False, "error": str(e)}

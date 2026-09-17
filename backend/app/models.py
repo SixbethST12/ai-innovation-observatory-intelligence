@@ -78,3 +78,17 @@ class RuleMatch(Base):
     rule_id = Column(Integer, nullable=False, index=True)
     publication_id = Column(Integer, nullable=False, index=True)
     matched_at = Column(DateTime, server_default=func.now(), nullable=False)
+
+
+class Source(Base):
+    """User-added RSS source (extends the built-in 4)."""
+    __tablename__ = "sources"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    name = Column(String, nullable=False, unique=True)
+    url = Column(String, nullable=False)
+    method = Column(String, nullable=False, default="rss")   # rss only for now
+    active = Column(Boolean, default=True, nullable=False)
+    builtin = Column(Boolean, default=False, nullable=False)
+    added_by = Column(String, nullable=True)
+    added_at = Column(DateTime, server_default=func.now(), nullable=False)
