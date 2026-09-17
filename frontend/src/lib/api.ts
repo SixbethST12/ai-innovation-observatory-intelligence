@@ -139,3 +139,41 @@ export type InsightsData = {
 
 export const getInsights = (months_back = 3) =>
   client.get<InsightsData>("/trends/insights", { params: { months_back } }).then(r => r.data);
+
+// ============================================================
+// Alert rules (server-side)
+// ============================================================
+export type AlertRule = {
+  id: number;
+  keyword: string;
+  source: string | null;
+  topic: string | null;
+  priority: string;
+  created_by: string | null;
+  active: boolean;
+};
+
+export type RuleMatch = {
+  match_id: number;
+  matched_at: string;
+  rule: { id: number; keyword: string; source: string; topic: string; priority: string };
+  publication: {
+    id: number;
+    title: string;
+    institution: string;
+    source_url: string;
+    published_date: string | null;
+  };
+};
+
+export const getRules = () => client.get<AlertRule[]>("/admin/rules").then(r => r.data);
+
+export const createRule = (payload: {
+  keyword: string; source: string; topic: string; priority: string; created_by?: string;
+}) => client.post<AlertRule>("/admin/rules", payload).then(r => r.data);
+
+export const deleteRule = (id: number) =>
+  client.delete(`/admin/rules/${id}`).then(r => r.data);
+
+export const getRuleMatches = (limit = 50) =>
+  client.get<RuleMatch[]>("/admin/rules/matches", { params: { limit } }).then(r => r.data);
