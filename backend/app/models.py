@@ -49,6 +49,10 @@ class PublicationRow(Base):
     ai_processed_at = Column(DateTime, nullable=True)
     ai_engine = Column(String, nullable=True)          # "ollama" | "rule-based"
 
+    # Admin controls
+    hidden = Column(Boolean, default=False, nullable=False, index=True)
+    manual = Column(Boolean, default=False, nullable=False)
+
     # Timestamps
     collected_at = Column(DateTime, server_default=func.now(), nullable=False)
 

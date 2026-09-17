@@ -41,7 +41,7 @@ def list_publications(
     offset: int = Query(0, ge=0),
     db: Session = Depends(get_db),
 ):
-    q = db.query(PublicationRow)
+    q = db.query(PublicationRow).filter(PublicationRow.hidden.is_(False))
 
     if institution:
         q = q.filter(PublicationRow.institution == institution)

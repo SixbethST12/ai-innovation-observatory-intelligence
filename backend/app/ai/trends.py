@@ -35,6 +35,7 @@ def _all_classified():
         rows = (
             s.query(PublicationRow)
             .filter(PublicationRow.ai_topics.isnot(None))
+            .filter(PublicationRow.hidden.is_(False))
             .all()
         )
         return rows

@@ -40,7 +40,7 @@ def search(
     db: Session = Depends(get_db),
 ):
     like = f"%{q}%"
-    query = db.query(PublicationRow).filter(
+    query = db.query(PublicationRow).filter(PublicationRow.hidden.is_(False)).filter(
         or_(
             PublicationRow.title.ilike(like),
             PublicationRow.abstract.ilike(like),

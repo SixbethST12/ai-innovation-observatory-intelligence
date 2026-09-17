@@ -481,3 +481,177 @@ def test_source(payload: SourceCreate):
         }
     except Exception as e:
         return {"ok": False, "error": str(e)}
+
+
+# ============================================================
+# Login verification
+# ============================================================
+class LoginPayload(BaseModel):
+    username: str
+    password: str
+
+
+@router.post("/users/verify")
+def verify_login(payload: LoginPayload):
+    """Check credentials against the in-memory user store."""
+    from ..users import find_by_credentials
+    user = find_by_credentials(payload.username, payload.password)
+    if not user:
+        from fastapi import HTTPException
+        raise HTTPException(401, "Invalid username or password")
+    return user
+
+
+# ============================================================
+# Manage Publications (admin MVP)
+# ============================================================
+from ..models import PublicationRow as PubRow
+from datetime import datetime
+
+
+class ManualPubCreate(BaseModel):
+    title: str
+    institution: str
+    source_url: str
+    published_date: str | None = None
+    document_type: str | None = None
+    abstract: str | None = None
+    run_ai: bool = True
+
+
+@router.get("/publications")
+def list_admin_publications(
+    filter: str = "all",
+    source: str = "all",
+    q: str = "",
+    limit: int = 200,
+    db: Session = Depends(get_db),
+):
+    """List publications for admin with filters."""
+    query = db.query(PubRow)
+
+    if filter == "pending":
+        query = query.filter(PubRow.ai_processed.is_(False))
+    elif filter == "fallback":
+        query = query.filter(PubRow.ai_engine == "rule-based")
+    elif filter == "hidden":
+        query = query.filter(PubRow.hidden.is_(True))
+    elif filter == "visible":
+        query = query.filter(PubRow.hidden.is_(False))
+
+    if source != "all":
+        query = query.filter(PubRow.institution == source)
+
+    if q.strip():
+        like = f"%{q.strip()}%"
+        query = query.filter(PubRow.title.ilike(like))
+
+    rows = query.order_by(PubRow.collected_at.desc()).limit(limit).all()
+
+    return [
+        {
+            "id": r.id,
+            "title": r.title,
+            "institution": r.institution,
+            "source_url": r.source_url,
+            "published_date": r.published_date.isoformat() if r.published_date else None,
+            "ai_processed": r.ai_processed,
+            "ai_engine": r.ai_engine,
+            "hidden": bool(getattr(r, "hidden", False)),
+            "manual": bool(getattr(r, "manual", False)),
+            "ai_topics": r.ai_topics,
+        }
+        for r in rows
+    ]
+
+
+class BulkIds(BaseModel):
+    ids: list[int]
+
+
+@router.post("/publications/bulk-reset-ai")
+def bulk_reset_ai(payload: BulkIds, db: Session = Depends(get_db)):
+    """Reset selected pubs so the AI pipeline reprocesses them."""
+    if not payload.ids:
+        from fastapi import HTTPException
+        raise HTTPException(400, "No IDs provided")
+
+    count = (
+        db.query(PubRow)
+        .filter(PubRow.id.in_(payload.ids))
+        .update({
+            PubRow.ai_processed: False,
+            PubRow.ai_summary: None,
+            PubRow.ai_topics: None,
+            PubRow.ai_relevance: None,
+            PubRow.ai_engine: None,
+            PubRow.ai_processed_at: None,
+        }, synchronize_session=False)
+    )
+    db.commit()
+    return {"reset": count}
+
+
+@router.post("/publications/bulk-hide")
+def bulk_hide(payload: BulkIds, db: Session = Depends(get_db)):
+    count = (
+        db.query(PubRow)
+        .filter(PubRow.id.in_(payload.ids))
+        .update({PubRow.hidden: True}, synchronize_session=False)
+    )
+    db.commit()
+    return {"hidden": count}
+
+
+@router.post("/publications/bulk-unhide")
+def bulk_unhide(payload: BulkIds, db: Session = Depends(get_db)):
+    count = (
+        db.query(PubRow)
+        .filter(PubRow.id.in_(payload.ids))
+        .update({PubRow.hidden: False}, synchronize_session=False)
+    )
+    db.commit()
+    return {"unhidden": count}
+
+
+@router.post("/publications/manual")
+def create_manual_publication(payload: ManualPubCreate, db: Session = Depends(get_db)):
+    """Add a publication manually."""
+    import hashlib
+    from dateutil import parser as dateparser
+
+    if not payload.title.strip() or not payload.source_url.strip():
+        from fastapi import HTTPException
+        raise HTTPException(400, "Title and source URL are required")
+
+    fingerprint = hashlib.sha256(
+        f"{payload.institution}|{payload.source_url}|{payload.title}".encode("utf-8")
+    ).hexdigest()
+
+    if db.query(PubRow).filter(PubRow.fingerprint == fingerprint).first():
+        from fastapi import HTTPException
+        raise HTTPException(400, "This publication already exists")
+
+    pub_date = None
+    if payload.published_date:
+        try:
+            pub_date = dateparser.parse(payload.published_date)
+        except Exception:
+            pass
+
+    row = PubRow(
+        title=payload.title.strip(),
+        institution=payload.institution.strip() or "Manual",
+        source_url=payload.source_url.strip(),
+        published_date=pub_date,
+        document_type=payload.document_type or "manual",
+        abstract=payload.abstract,
+        fingerprint=fingerprint,
+        hidden=False,
+        manual=True,
+        ai_processed=not payload.run_ai,
+    )
+    db.add(row)
+    db.commit()
+    db.refresh(row)
+    return {"id": row.id, "title": row.title, "run_ai": payload.run_ai}

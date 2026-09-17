@@ -86,3 +86,12 @@ def delete_user(user_id: int) -> None:
             if len(admins) <= 1:
                 raise ValueError("Cannot delete the last admin")
         _USERS.remove(target)
+
+
+def find_by_credentials(username: str, password: str) -> dict | None:
+    """Return the user dict (without password) if username+password match."""
+    with _LOCK:
+        for u in _USERS:
+            if u["username"] == username and u["password"] == password:
+                return {k: v for k, v in u.items() if k != "password"}
+    return None

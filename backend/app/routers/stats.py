@@ -30,7 +30,7 @@ router = APIRouter(prefix="/stats", tags=["stats"])
 
 @router.get("", response_model=StatsOut)
 def get_stats(db: Session = Depends(get_db)):
-    total = db.query(func.count(PublicationRow.id)).scalar() or 0
+    total = db.query(func.count(PublicationRow.id)).filter(PublicationRow.hidden.is_(False)).scalar() or 0
     processed = (
         db.query(func.count(PublicationRow.id))
         .filter(PublicationRow.ai_processed.is_(True))
@@ -62,6 +62,7 @@ def get_timeline(db: Session = Depends(get_db)):
             sqlfunc.count(PublicationRow.id).label("count"),
         )
         .filter(PublicationRow.published_date.isnot(None))
+        .filter(PublicationRow.hidden.is_(False))
         .group_by("month")
         .order_by("month")
         .all()
