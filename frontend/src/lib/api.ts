@@ -241,3 +241,55 @@ export const deleteUserSource = (id: number) =>
 
 export const testSource = (payload: { name: string; url: string }) =>
   client.post<SourceTest>("/admin/sources/test", payload).then(r => r.data);
+
+// ============================================================
+// Login verification
+// ============================================================
+export type LoginResult = {
+  id: number;
+  username: string;
+  role: "analyst" | "admin";
+  full_name: string;
+  created_at: string;
+};
+
+export const verifyLogin = (username: string, password: string) =>
+  client.post<LoginResult>("/admin/users/verify", { username, password }).then(r => r.data);
+
+// ============================================================
+// Manage Publications (admin)
+// ============================================================
+export type AdminPubRow = {
+  id: number;
+  title: string;
+  institution: string;
+  source_url: string;
+  published_date: string | null;
+  ai_processed: boolean;
+  ai_engine: string | null;
+  hidden: boolean;
+  manual: boolean;
+  ai_topics: string | null;
+};
+
+export const getAdminPubs = (params: { filter?: string; source?: string; q?: string; limit?: number } = {}) =>
+  client.get<AdminPubRow[]>("/admin/publications", { params }).then(r => r.data);
+
+export const bulkResetAI = (ids: number[]) =>
+  client.post("/admin/publications/bulk-reset-ai", { ids }).then(r => r.data);
+
+export const bulkHide = (ids: number[]) =>
+  client.post("/admin/publications/bulk-hide", { ids }).then(r => r.data);
+
+export const bulkUnhide = (ids: number[]) =>
+  client.post("/admin/publications/bulk-unhide", { ids }).then(r => r.data);
+
+export const createManualPub = (payload: {
+  title: string;
+  institution: string;
+  source_url: string;
+  published_date?: string;
+  document_type?: string;
+  abstract?: string;
+  run_ai?: boolean;
+}) => client.post("/admin/publications/manual", payload).then(r => r.data);

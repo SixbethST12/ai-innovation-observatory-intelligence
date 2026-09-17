@@ -24,6 +24,7 @@ import Alerts from "@/pages/Alerts";
 import AdminDashboard from "@/pages/admin/AdminDashboard";
 import ManageSources from "@/pages/admin/ManageSources";
 import ManageTopics from "@/pages/admin/ManageTopics";
+import ManagePublications from "@/pages/admin/ManagePublications";
 import ManageUsers from "@/pages/admin/ManageUsers";
 import { getAlerts } from "@/lib/api";
 
@@ -45,6 +46,7 @@ const ANALYST_NAV = [
 const ADMIN_NAV = [
   { key: "admin-dashboard", label: "Admin Panel",    icon: Cog },
   { key: "admin-sources",   label: "Manage Sources", icon: Database },
+  { key: "admin-publications", label: "Manage Publications", icon: FileText },
   { key: "admin-topics",    label: "Manage Topics",  icon: Tags },
   { key: "admin-users",     label: "Manage Users",   icon: Users },
   { key: "alerts",          label: "Alerts & Notifications", icon: Bell },
@@ -324,6 +326,7 @@ const [readIds, setReadIds] = useState<Set<string>>(() => {
             {page === "admin-sources" && <ManageSources />}
             {page === "admin-topics" && <ManageTopics />}
             {page === "admin-users" && <ManageUsers />}
+            {page === "admin-publications" && <ManagePublications />}
           </div>
         </main>
       </div>

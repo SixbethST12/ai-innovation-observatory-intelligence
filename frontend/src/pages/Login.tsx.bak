@@ -1,15 +1,19 @@
 /**
- * Login.tsx — Role-based login against the backend user store.
+ * Login.tsx — Simple role-based login (prototype only).
  *
- * Users are managed in the Admin Panel → Manage Users.
- * Seed accounts: analyst/analyst123, admin/admin123
+ * NOTE: Credentials are checked client-side. This is NOT real auth
+ * and is documented as a prototype limitation.
  */
 import { useState } from "react";
-import { UserCircle, Shield, Loader2 } from "lucide-react";
+import { UserCircle, Shield } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { verifyLogin } from "@/lib/api";
+
+const CREDS = {
+  analyst: { user: "analyst", pass: "analyst123" },
+  admin:   { user: "admin",   pass: "admin123"   },
+};
 
 type Role = "analyst" | "admin";
 
@@ -18,28 +22,14 @@ export default function Login({ onLogin }: { onLogin: (role: Role) => void }) {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
-  const [checking, setChecking] = useState(false);
 
-  async function submit(e: React.FormEvent) {
+  function submit(e: React.FormEvent) {
     e.preventDefault();
-    if (!username.trim() || !password) {
-      setError("Enter username and password");
-      return;
-    }
-    setChecking(true);
-    setError("");
-    try {
-      const user = await verifyLogin(username.trim(), password);
-      if (user.role !== role) {
-        setError(`This account has role "${user.role}", not "${role}". Switch to the correct tab.`);
-        setChecking(false);
-        return;
-      }
-      onLogin(user.role as Role);
-    } catch {
-      setError("Invalid username or password");
-    } finally {
-      setChecking(false);
+    const c = CREDS[role];
+    if (username === c.user && password === c.pass) {
+      onLogin(role);
+    } else {
+      setError(`Invalid ${role} credentials. Try ${c.user} / ${c.pass}`);
     }
   }
 
@@ -61,7 +51,7 @@ export default function Login({ onLogin }: { onLogin: (role: Role) => void }) {
         </div>
       </div>
 
-      {/* Login card */}
+      {/* Login */}
       <div className="flex-1 flex items-center justify-center p-8">
         <Card className="w-full max-w-md shadow-xl">
           <CardContent className="p-8">
@@ -111,7 +101,7 @@ export default function Login({ onLogin }: { onLogin: (role: Role) => void }) {
                 <Input
                   value={username}
                   onChange={(e) => { setUsername(e.target.value); setError(""); }}
-                  placeholder="Enter your username"
+                  placeholder={role === "analyst" ? "analyst" : "admin"}
                   className="mt-1.5"
                   autoFocus
                 />
@@ -125,39 +115,29 @@ export default function Login({ onLogin }: { onLogin: (role: Role) => void }) {
                   type="password"
                   value={password}
                   onChange={(e) => { setPassword(e.target.value); setError(""); }}
-                  placeholder="Enter your password"
+                  placeholder="••••••••"
                   className="mt-1.5"
                 />
               </div>
 
               {error && (
-                <div className="text-xs text-red-600 bg-red-50 border border-red-100 rounded-md px-3 py-2 leading-relaxed">
+                <div className="text-xs text-red-600 bg-red-50 border border-red-100 rounded-md px-3 py-2">
                   {error}
                 </div>
               )}
 
               <Button
                 type="submit"
-                disabled={checking}
                 className="w-full bg-[var(--bot-navy)] hover:bg-[var(--bot-navy-dark)] text-white"
               >
-                {checking ? (
-                  <>
-                    <Loader2 size={14} className="animate-spin" /> Signing in…
-                  </>
-                ) : (
-                  <>Sign in as {role.charAt(0).toUpperCase() + role.slice(1)}</>
-                )}
+                Sign in as {role.charAt(0).toUpperCase() + role.slice(1)}
               </Button>
             </form>
 
             <div className="text-[11px] text-gray-400 text-center mt-6 leading-relaxed">
-              Default accounts:<br />
+              Prototype credentials (not for production):<br />
               Analyst: <code className="bg-gray-100 px-1 rounded">analyst / analyst123</code><br />
               Admin: <code className="bg-gray-100 px-1 rounded">admin / admin123</code>
-              <div className="mt-2 text-[10px]">
-                New users can be added via Admin → Manage Users.
-              </div>
             </div>
           </CardContent>
         </Card>
