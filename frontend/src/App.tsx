@@ -25,13 +25,12 @@ import AdminDashboard from "@/pages/admin/AdminDashboard";
 import ManageSources from "@/pages/admin/ManageSources";
 import ManageTopics from "@/pages/admin/ManageTopics";
 import ManageUsers from "@/pages/admin/ManageUsers";
-import ServiceControl from "@/pages/admin/ServiceControl";
 import { getAlerts } from "@/lib/api";
 
 type Role = "analyst" | "admin";
 type PageKey =
   | "dashboard" | "publications" | "trends" | "topics" | "search" | "kb" | "alerts"
-  | "admin-dashboard" | "admin-sources" | "admin-topics" | "admin-users" | "admin-services";
+  | "admin-dashboard" | "admin-sources" | "admin-topics" | "admin-users";
 
 const ANALYST_NAV = [
   { key: "dashboard",    label: "Dashboard",              icon: LayoutDashboard },
@@ -48,7 +47,6 @@ const ADMIN_NAV = [
   { key: "admin-sources",   label: "Manage Sources", icon: Database },
   { key: "admin-topics",    label: "Manage Topics",  icon: Tags },
   { key: "admin-users",     label: "Manage Users",   icon: Users },
-  { key: "admin-services",  label: "Service Control",        icon: Activity },
   { key: "alerts",          label: "Alerts & Notifications", icon: Bell },
 ] as const;
 
@@ -326,7 +324,6 @@ const [readIds, setReadIds] = useState<Set<string>>(() => {
             {page === "admin-sources" && <ManageSources />}
             {page === "admin-topics" && <ManageTopics />}
             {page === "admin-users" && <ManageUsers />}
-            {page === "admin-services" && <ServiceControl />}
           </div>
         </main>
       </div>
