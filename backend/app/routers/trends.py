@@ -144,3 +144,14 @@ BRIEF:"""
     }
     cache_set(cache_key, result, ttl_seconds=600)
     return result
+
+
+# ============================================================
+# Trend insights — rule-based bullets + AI narrative
+# ============================================================
+from ..trend_insights import generate_insights
+
+
+@router.get("/insights")
+def get_insights(months_back: int = Q(3, ge=1, le=12)):
+    return generate_insights(months_back=months_back)

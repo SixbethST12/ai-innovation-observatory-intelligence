@@ -126,3 +126,16 @@ export type SystemAlert = {
 
 export const getAlerts = () =>
   client.get<SystemAlert[]>("/admin/alerts").then(r => r.data);
+
+// ============================================================
+// Trend insights
+// ============================================================
+export type InsightsData = {
+  bullets: string[];
+  narrative: string;
+  disclaimer: string;
+  engine: string;
+};
+
+export const getInsights = (months_back = 3) =>
+  client.get<InsightsData>("/trends/insights", { params: { months_back } }).then(r => r.data);
