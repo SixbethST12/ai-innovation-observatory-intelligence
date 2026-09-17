@@ -209,3 +209,35 @@ export const stopScheduler = () =>
 
 export const retryFailed = () =>
   client.post("/admin/retry-failed").then(r => r.data);
+
+// ============================================================
+// Dynamic RSS sources
+// ============================================================
+export type UserSource = {
+  id: number;
+  name: string;
+  url: string;
+  method: string;
+  active: boolean;
+  added_at: string | null;
+};
+
+export type SourceTest = {
+  ok: boolean;
+  entries?: number;
+  title?: string;
+  bozo?: boolean;
+  error?: string;
+};
+
+export const getUserSources = () =>
+  client.get<UserSource[]>("/admin/sources/list").then(r => r.data);
+
+export const addUserSource = (payload: { name: string; url: string }) =>
+  client.post("/admin/sources/list", payload).then(r => r.data);
+
+export const deleteUserSource = (id: number) =>
+  client.delete(`/admin/sources/list/${id}`).then(r => r.data);
+
+export const testSource = (payload: { name: string; url: string }) =>
+  client.post<SourceTest>("/admin/sources/test", payload).then(r => r.data);
