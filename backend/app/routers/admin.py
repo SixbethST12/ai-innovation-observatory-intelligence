@@ -203,3 +203,96 @@ from ..alerts import generate_alerts
 @router.get("/alerts")
 def get_alerts():
     return generate_alerts()
+
+
+# ============================================================
+# Alert Rules — CRUD + matches
+# ============================================================
+from ..models import AlertRule, RuleMatch, PublicationRow
+
+
+class RuleCreate(BaseModel):
+    keyword: str
+    source: str = "all"
+    topic: str = "all"
+    priority: str = "medium"
+    created_by: str = ""
+
+
+class RuleOut(BaseModel):
+    id: int
+    keyword: str
+    source: str | None
+    topic: str | None
+    priority: str
+    created_by: str | None
+    active: bool
+
+
+@router.get("/rules", response_model=list[RuleOut])
+def list_rules(db: Session = Depends(get_db)):
+    return db.query(AlertRule).order_by(AlertRule.id.desc()).all()
+
+
+@router.post("/rules", response_model=RuleOut)
+def create_rule(payload: RuleCreate, db: Session = Depends(get_db)):
+    if not payload.keyword.strip():
+        from fastapi import HTTPException
+        raise HTTPException(400, "Keyword is required")
+    rule = AlertRule(
+        keyword=payload.keyword.strip(),
+        source=payload.source,
+        topic=payload.topic,
+        priority=payload.priority,
+        created_by=payload.created_by or "anonymous",
+    )
+    db.add(rule)
+    db.commit()
+    db.refresh(rule)
+    return rule
+
+
+@router.delete("/rules/{rule_id}")
+def delete_rule(rule_id: int, db: Session = Depends(get_db)):
+    rule = db.query(AlertRule).filter(AlertRule.id == rule_id).first()
+    if not rule:
+        from fastapi import HTTPException
+        raise HTTPException(404, f"Rule {rule_id} not found")
+    db.query(RuleMatch).filter(RuleMatch.rule_id == rule_id).delete()
+    db.delete(rule)
+    db.commit()
+    return {"deleted": rule_id}
+
+
+@router.get("/rules/matches")
+def list_matches(limit: int = 50, db: Session = Depends(get_db)):
+    """Return recent rule matches with rule + publication info."""
+    rows = (
+        db.query(RuleMatch, AlertRule, PublicationRow)
+        .join(AlertRule, AlertRule.id == RuleMatch.rule_id)
+        .join(PublicationRow, PublicationRow.id == RuleMatch.publication_id)
+        .order_by(RuleMatch.matched_at.desc())
+        .limit(limit)
+        .all()
+    )
+    return [
+        {
+            "match_id": m.id,
+            "matched_at": m.matched_at.isoformat() if m.matched_at else None,
+            "rule": {
+                "id": r.id,
+                "keyword": r.keyword,
+                "source": r.source,
+                "topic": r.topic,
+                "priority": r.priority,
+            },
+            "publication": {
+                "id": p.id,
+                "title": p.title,
+                "institution": p.institution,
+                "source_url": p.source_url,
+                "published_date": p.published_date.isoformat() if p.published_date else None,
+            },
+        }
+        for m, r, p in rows
+    ]

@@ -54,3 +54,27 @@ class PublicationRow(Base):
 
     def __repr__(self):
         return f"<PublicationRow id={self.id} inst={self.institution} title={self.title[:40]!r}>"
+
+
+class AlertRule(Base):
+    """User-defined rule — 'notify me when a new pub matches this'."""
+    __tablename__ = "alert_rules"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    keyword = Column(String, nullable=False)
+    source = Column(String, nullable=True)      # "all" or institution name
+    topic = Column(String, nullable=True)       # "all" or topic slug
+    priority = Column(String, nullable=False, default="medium")  # high/medium/low
+    created_by = Column(String, nullable=True)  # username
+    created_at = Column(DateTime, server_default=func.now(), nullable=False)
+    active = Column(Boolean, default=True, nullable=False)
+
+
+class RuleMatch(Base):
+    """A record that a rule matched a publication."""
+    __tablename__ = "rule_matches"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    rule_id = Column(Integer, nullable=False, index=True)
+    publication_id = Column(Integer, nullable=False, index=True)
+    matched_at = Column(DateTime, server_default=func.now(), nullable=False)

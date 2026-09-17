@@ -4,21 +4,16 @@ storage.py — Persist collected publications into the database.
 PURPOSE:
     Bridge between the collection layer (Publication dataclasses) and
     the data layer (PublicationRow ORM). Handles insert + duplicate
-    detection at the DB level.
+    detection at the DB level, and triggers rule matching on new rows.
 
 RESPONSIBILITIES:
     1. `save_publications(pubs)` — insert new rows, skip existing ones.
-    2. Return counts (inserted, skipped) so the caller can report.
-    3. Rely on `fingerprint` UNIQUE constraint for correctness even if
-       the Python-level check is bypassed.
+    2. Track inserted IDs and run alert-rule matching on them.
+    3. Return counts (inserted, skipped, total) so the caller can report.
 
 USED BY:
     - CLI storage script
-    - Future: scheduler job after each collection run
-
-NOTES:
-    - Uses `SessionLocal` directly (not the FastAPI dependency).
-    - Does NOT run AI enrichment — that is Layer 4's job.
+    - app/jobs/manager.py (via _run_collection)
 """
 
 from sqlalchemy.exc import IntegrityError
@@ -33,14 +28,14 @@ def save_publications(pubs: list[Publication]) -> dict:
     Insert publications into the DB, skipping duplicates.
 
     Returns:
-        {"inserted": int, "skipped": int, "total": int}
+        {"inserted": int, "skipped": int, "total": int, "matched": int}
     """
     session = SessionLocal()
     inserted = 0
     skipped = 0
+    inserted_ids: list[int] = []
 
     try:
-        # Pre-fetch existing fingerprints for a fast Python-side skip
         existing = {fp for (fp,) in session.query(PublicationRow.fingerprint).all()}
 
         for pub in pubs:
@@ -60,6 +55,8 @@ def save_publications(pubs: list[Publication]) -> dict:
                 fingerprint=fp,
             )
             session.add(row)
+            session.flush()      # assign row.id
+            inserted_ids.append(row.id)
             existing.add(fp)
             inserted += 1
 
@@ -71,4 +68,20 @@ def save_publications(pubs: list[Publication]) -> dict:
     finally:
         session.close()
 
-    return {"inserted": inserted, "skipped": skipped, "total": len(pubs)}
+    # Run alert-rule matching on the newly inserted rows
+    matched = 0
+    if inserted_ids:
+        try:
+            from .rule_matcher import match_new_publications
+            matched = match_new_publications(inserted_ids)
+            if matched:
+                print(f"[storage] rule matches created: {matched}")
+        except Exception as e:
+            print(f"[storage] rule matching failed: {e}")
+
+    return {
+        "inserted": inserted,
+        "skipped": skipped,
+        "total": len(pubs),
+        "matched": matched,
+    }
