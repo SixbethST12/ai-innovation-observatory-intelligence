@@ -111,3 +111,18 @@ export const getServices        = () => client.get<ServiceStatus[]>("/admin/serv
 export const restartService     = (name: string) => client.post(`/admin/services/${name}/restart`).then(r => r.data);
 export const getServiceLogs     = (name: string, lines = 60) =>
   client.get<{ service: string; lines: string[] }>(`/admin/services/${name}/logs`, { params: { lines } }).then(r => r.data);
+
+// ============================================================
+// System alerts
+// ============================================================
+export type SystemAlert = {
+  id: string;
+  level: "critical" | "high" | "medium" | "info" | "success";
+  title: string;
+  message: string;
+  timestamp: string;
+  source: string;
+};
+
+export const getAlerts = () =>
+  client.get<SystemAlert[]>("/admin/alerts").then(r => r.data);

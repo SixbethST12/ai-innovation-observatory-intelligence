@@ -1,206 +1,388 @@
 /**
- * Alerts.tsx — Real system alerts derived from backend state.
+ * Alerts.tsx — Live system alerts + user-defined rules.
  *
- * Reads GET /admin/alerts — live job outcomes, service health,
- * backlog warnings, and stale-data checks.
+ * FEATURES:
+ *   - Polls /admin/alerts every 5 seconds
+ *   - Shows running jobs with progress bars
+ *   - Color-codes by level (critical/high/medium/info/success)
+ *   - User-created alert rules (localStorage, prototype only)
  */
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import {
-  Bell, AlertTriangle, Info, CheckCircle2, XCircle, X,
-  RefreshCw, Filter,
+  Bell, AlertTriangle, Info, CheckCircle2, Plus, Trash2,
+  RefreshCw, AlertCircle, Activity,
 } from "lucide-react";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from "@/components/ui/select";
 import { getAlerts, type SystemAlert } from "@/lib/api";
 
-const LEVEL_META: Record<string, { label: string; color: string; bg: string; icon: React.ComponentType<{ size?: number }> }> = {
-  critical: { label: "Critical", color: "#dc2626", bg: "#fee2e2", icon: XCircle },
-  high:     { label: "High",     color: "#b45309", bg: "#fef3c7", icon: AlertTriangle },
-  medium:   { label: "Medium",   color: "#0369a1", bg: "#dbeafe", icon: Info },
-  info:     { label: "Info",     color: "#6b7280", bg: "#f3f4f6", icon: Info },
-  success:  { label: "Success",  color: "#16a34a", bg: "#dcfce7", icon: CheckCircle2 },
+const TOPICS = [
+  "monetary_policy", "financial_stability", "banking_regulation",
+  "financial_markets", "digital_finance", "fintech", "artificial_intelligence",
+  "payment_systems", "cybersecurity", "climate_finance", "financial_inclusion",
+];
+const INSTITUTIONS = ["BIS", "IMF", "World Bank", "CBK"];
+
+type AlertRule = {
+  id: number;
+  keyword: string;
+  source: string;
+  topic: string;
+  priority: "high" | "medium" | "low";
+};
+
+const LEVEL_STYLES: Record<string, { bg: string; text: string; border: string; icon: React.ComponentType<{ size?: number }> }> = {
+  critical: { bg: "bg-red-50",     text: "text-red-700",     border: "border-red-200",     icon: AlertCircle },
+  high:     { bg: "bg-orange-50",  text: "text-orange-700",  border: "border-orange-200",  icon: AlertTriangle },
+  medium:   { bg: "bg-amber-50",   text: "text-amber-700",   border: "border-amber-200",   icon: AlertTriangle },
+  info:     { bg: "bg-blue-50",    text: "text-blue-700",    border: "border-blue-200",    icon: Info },
+  success:  { bg: "bg-green-50",   text: "text-green-700",   border: "border-green-200",   icon: CheckCircle2 },
 };
 
 export default function Alerts() {
   const [alerts, setAlerts] = useState<SystemAlert[]>([]);
   const [loading, setLoading] = useState(true);
-  const [filter, setFilter] = useState<string>("all");
-  const [dismissed, setDismissed] = useState<Set<string>>(new Set());
+  const [lastRefresh, setLastRefresh] = useState<Date>(new Date());
 
-  async function refresh() {
-    const data = await getAlerts();
-    setAlerts(data);
-  }
+  // User-defined rules (localStorage-backed)
+  const [rules, setRules] = useState<AlertRule[]>(() => {
+    try {
+      const saved = localStorage.getItem("observatory_alert_rules");
+      return saved ? JSON.parse(saved) : [];
+    } catch {
+      return [];
+    }
+  });
+  const [keyword, setKeyword] = useState("");
+  const [source, setSource] = useState("all");
+  const [topic, setTopic] = useState("all");
+  const [priority, setPriority] = useState<"high" | "medium" | "low">("medium");
 
-  useEffect(() => {
-    refresh().finally(() => setLoading(false));
-    const id = setInterval(refresh, 5000);
-    return () => clearInterval(id);
+  // Poll alerts every 5s
+  const refresh = useCallback(async () => {
+    try {
+      const data = await getAlerts();
+      setAlerts(data);
+      setLastRefresh(new Date());
+    } catch (err) {
+      console.error("Failed to fetch alerts:", err);
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
-  const visible = alerts.filter(a => !dismissed.has(a.id));
-  const filtered = filter === "all" ? visible : visible.filter(a => a.level === filter);
+  useEffect(() => {
+    refresh();
+    const id = setInterval(refresh, 5000);
+    return () => clearInterval(id);
+  }, [refresh]);
 
-  const counts = {
-    critical: visible.filter(a => a.level === "critical").length,
-    high:     visible.filter(a => a.level === "high").length,
-    medium:   visible.filter(a => a.level === "medium").length,
-    info:     visible.filter(a => a.level === "info").length,
-    success:  visible.filter(a => a.level === "success").length,
-  };
+  // Persist rules
+  useEffect(() => {
+    localStorage.setItem("observatory_alert_rules", JSON.stringify(rules));
+  }, [rules]);
 
-  function dismiss(id: string) {
-    const next = new Set(dismissed);
-    next.add(id);
-    setDismissed(next);
+  function addRule(e: React.FormEvent) {
+    e.preventDefault();
+    if (!keyword.trim()) return;
+    setRules(prev => [...prev, { id: Date.now(), keyword: keyword.trim(), source, topic, priority }]);
+    setKeyword("");
   }
+
+  function removeRule(id: number) {
+    setRules(prev => prev.filter(r => r.id !== id));
+  }
+
+  // Counts by level
+  const counts = {
+    critical: alerts.filter(a => a.level === "critical").length,
+    high:     alerts.filter(a => a.level === "high").length,
+    medium:   alerts.filter(a => a.level === "medium").length,
+    info:     alerts.filter(a => a.level === "info").length,
+    success:  alerts.filter(a => a.level === "success").length,
+  };
 
   return (
     <div>
       {/* Page head */}
-      <div className="flex justify-between items-start mb-6 flex-wrap gap-4">
+      <div className="mb-6 flex justify-between items-start flex-wrap gap-4">
         <div>
           <h1 className="text-2xl font-extrabold text-[var(--bot-navy)] tracking-tight">
-            Alerts & Notifications
+            Alerts &amp; Notifications
           </h1>
           <p className="text-sm text-gray-500 mt-1">
-            Live system alerts from collection jobs, AI pipeline, and services
+            Live system alerts, job progress, and user-defined rules
           </p>
         </div>
-        <Button
-          onClick={refresh}
-          variant="outline"
-          className="gap-2 border-[var(--bot-navy)] text-[var(--bot-navy)]"
-        >
-          <RefreshCw size={14} /> Refresh
-        </Button>
-      </div>
-
-      {/* Priority cards */}
-      <div className="grid grid-cols-4 gap-5 mb-6">
-        <PriorityCard label="Critical" count={counts.critical} color="#dc2626" icon={XCircle} />
-        <PriorityCard label="High"     count={counts.high}     color="#b45309" icon={AlertTriangle} />
-        <PriorityCard label="Medium"   count={counts.medium}   color="#0369a1" icon={Info} />
-        <PriorityCard label="Success"  count={counts.success}  color="#16a34a" icon={CheckCircle2} />
-      </div>
-
-      {/* Filter */}
-      <Card className="mb-4">
-        <CardContent className="flex items-center gap-3 p-4">
-          <Filter size={16} className="text-gray-400" />
-          <div className="flex gap-2 flex-wrap">
-            {(["all", "critical", "high", "medium", "info", "success"] as const).map(lvl => (
-              <button
-                key={lvl}
-                onClick={() => setFilter(lvl)}
-                className={`text-xs px-3 py-1.5 rounded-full border font-bold capitalize transition ${
-                  filter === lvl
-                    ? "bg-[var(--bot-navy)] text-white border-[var(--bot-navy)]"
-                    : "bg-white text-gray-600 border-gray-200 hover:border-gray-300"
-                }`}
-              >
-                {lvl} {lvl === "all" ? `(${visible.length})` : `(${counts[lvl as keyof typeof counts] || 0})`}
-              </button>
-            ))}
+        <div className="flex items-center gap-3">
+          <div className="flex items-center gap-1.5 text-xs text-gray-500">
+            <Activity size={14} className="text-green-500 animate-pulse" />
+            Live · updated {lastRefresh.toLocaleTimeString()}
           </div>
-        </CardContent>
-      </Card>
+          <Button variant="outline" size="sm" onClick={refresh}>
+            <RefreshCw size={14} /> Refresh
+          </Button>
+        </div>
+      </div>
 
-      {/* Alerts list */}
-      <Card>
-        <CardContent className="p-0">
-          {loading ? (
-            <div className="py-16 text-center text-gray-500">Loading alerts…</div>
-          ) : filtered.length === 0 ? (
-            <div className="py-20 text-center">
-              <Bell size={48} className="mx-auto text-gray-300 mb-3" />
-              <div className="text-sm font-bold text-gray-600">No alerts</div>
-              <div className="text-xs text-gray-500 mt-1">
-                {filter === "all"
-                  ? "Everything is running smoothly. Alerts appear here automatically."
-                  : `No ${filter} alerts.`}
+      {/* Level counters */}
+      <div className="grid grid-cols-5 gap-4 mb-6">
+        <StatBox icon={AlertCircle}   label="Critical" value={counts.critical} color="#dc2626" />
+        <StatBox icon={AlertTriangle} label="High"     value={counts.high}     color="#ea580c" />
+        <StatBox icon={AlertTriangle} label="Medium"   value={counts.medium}   color="#b45309" />
+        <StatBox icon={Info}          label="Info"     value={counts.info}     color="#1e40af" />
+        <StatBox icon={CheckCircle2}  label="Success"  value={counts.success}  color="#16a34a" />
+      </div>
+
+      <div className="grid grid-cols-[1.4fr_1fr] gap-5">
+        {/* Live system alerts */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-[15px] text-[var(--bot-navy)] flex items-center gap-2">
+              <Bell size={14} /> System Alerts ({alerts.length})
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {loading ? (
+              <div className="text-center py-12 text-gray-500">Loading alerts…</div>
+            ) : alerts.length === 0 ? (
+              <div className="text-center py-12 text-gray-500">
+                <CheckCircle2 size={40} className="mx-auto text-green-300 mb-3" />
+                <div className="text-sm font-semibold mb-1">All systems normal</div>
+                <div className="text-xs">No alerts to show.</div>
               </div>
-            </div>
-          ) : (
-            <div className="divide-y divide-gray-100">
-              {filtered.map(a => {
-                const meta = LEVEL_META[a.level] || LEVEL_META.info;
-                const Icon = meta.icon;
-                return (
-                  <div key={a.id} className="flex gap-4 p-5 hover:bg-gray-50 transition">
+            ) : (
+              <div className="space-y-3">
+                {alerts.map(a => {
+                  const style = LEVEL_STYLES[a.level] || LEVEL_STYLES.info;
+                  const Icon = style.icon;
+                  const running = (a as any).progress?.running;
+                  const percent = (a as any).progress?.percent;
+                  return (
                     <div
-                      className="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0"
-                      style={{ background: meta.bg, color: meta.color }}
+                      key={a.id}
+                      className={`border rounded-lg p-4 ${style.bg} ${style.border}`}
                     >
-                      <Icon size={18} />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 flex-wrap mb-1">
-                        <Badge
-                          className="border font-bold text-[10.5px]"
-                          style={{
-                            background: meta.bg,
-                            color: meta.color,
-                            borderColor: meta.color + "40",
-                          }}
-                        >
-                          {meta.label}
-                        </Badge>
-                        <span className="text-[11px] text-gray-400 uppercase tracking-wider font-bold">
-                          {a.source}
-                        </span>
-                        <span className="text-[11px] text-gray-400">
-                          · {new Date(a.timestamp).toLocaleString("en-GB", {
-                            day: "2-digit", month: "short", year: "numeric",
-                            hour: "2-digit", minute: "2-digit",
-                          })}
-                        </span>
-                      </div>
-                      <div className="text-sm font-bold text-[var(--bot-navy)]">
-                        {a.title}
-                      </div>
-                      <div className="text-xs text-gray-600 mt-1 leading-relaxed">
-                        {a.message}
-                      </div>
-                    </div>
-                    <button
-                      onClick={() => dismiss(a.id)}
-                      className="text-gray-300 hover:text-gray-500 transition p-1 self-start"
-                      title="Dismiss"
-                    >
-                      <X size={16} />
-                    </button>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </CardContent>
-      </Card>
+                      <div className="flex gap-3 items-start">
+                        <div className={`mt-0.5 ${style.text} flex-shrink-0`}>
+                          <Icon size={18} />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 flex-wrap mb-1">
+                            <span className={`text-[13px] font-bold ${style.text}`}>
+                              {a.title}
+                            </span>
+                            {running && (
+                              <Badge className="bg-white text-[10px] border font-bold uppercase tracking-wider">
+                                running
+                              </Badge>
+                            )}
+                            <Badge className={`ml-auto text-[10px] uppercase font-bold border ${style.text} ${style.border} bg-white`}>
+                              {a.level}
+                            </Badge>
+                          </div>
+                          <p className="text-xs text-gray-700 leading-relaxed">
+                            {a.message}
+                          </p>
 
-      <div className="text-xs text-gray-400 mt-4 text-center">
-        Alerts refresh automatically every 5 seconds. Dismissals are session-only.
+                          {/* Progress bar for running jobs */}
+                          {typeof percent === "number" && (
+                            <div className="mt-3">
+                              <div className="flex justify-between text-[11px] text-gray-600 mb-1">
+                                <span>{(a as any).progress?.done} / {(a as any).progress?.total}</span>
+                                <span className="font-bold">{percent}%</span>
+                              </div>
+                              <div className="h-2 bg-white rounded-full overflow-hidden border border-gray-100">
+                                <div
+                                  className="h-full bg-[var(--bot-navy)] transition-all duration-500"
+                                  style={{ width: `${percent}%` }}
+                                />
+                              </div>
+                            </div>
+                          )}
+
+                          <div className="flex gap-3 items-center mt-2 text-[10.5px] text-gray-500">
+                            <span>{a.source}</span>
+                            <span>·</span>
+                            <span>
+                              {new Date(a.timestamp).toLocaleString("en-GB", {
+                                day: "2-digit", month: "short", year: "numeric",
+                                hour: "2-digit", minute: "2-digit",
+                              })}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* User-defined rules */}
+        <div className="space-y-5">
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-[15px] text-[var(--bot-navy)] flex items-center gap-2">
+                <Plus size={14} /> Create Alert Rule
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <form onSubmit={addRule} className="space-y-3">
+                <div>
+                  <label className="text-xs font-bold uppercase tracking-wider text-gray-500">
+                    Keyword
+                  </label>
+                  <Input
+                    placeholder="e.g. CBDC, stablecoin"
+                    value={keyword}
+                    onChange={(e) => setKeyword(e.target.value)}
+                    className="mt-1.5"
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <label className="text-xs font-bold uppercase tracking-wider text-gray-500">Source</label>
+                    <Select value={source} onValueChange={setSource}>
+                      <SelectTrigger className="mt-1.5">
+                        <SelectValue>{source === "all" ? "Any" : source}</SelectValue>
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">Any source</SelectItem>
+                        {INSTITUTIONS.map(i => <SelectItem key={i} value={i}>{i}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <label className="text-xs font-bold uppercase tracking-wider text-gray-500">Topic</label>
+                    <Select value={topic} onValueChange={setTopic}>
+                      <SelectTrigger className="mt-1.5">
+                        <SelectValue>{topic === "all" ? "Any" : topic.replace(/_/g, " ")}</SelectValue>
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">Any topic</SelectItem>
+                        {TOPICS.map(t => (
+                          <SelectItem key={t} value={t}>{t.replace(/_/g, " ")}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="text-xs font-bold uppercase tracking-wider text-gray-500">Priority</label>
+                  <div className="flex gap-2 mt-1.5">
+                    {(["high", "medium", "low"] as const).map(p => (
+                      <button
+                        key={p}
+                        type="button"
+                        onClick={() => setPriority(p)}
+                        className={`flex-1 py-1.5 rounded-md text-xs font-bold capitalize border transition ${
+                          priority === p
+                            ? p === "high"   ? "bg-red-100 text-red-700 border-red-300"
+                            : p === "medium" ? "bg-amber-100 text-amber-700 border-amber-300"
+                            :                  "bg-green-100 text-green-700 border-green-300"
+                            : "bg-white text-gray-500 border-gray-200"
+                        }`}
+                      >
+                        {p}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <Button
+                  type="submit"
+                  disabled={!keyword.trim()}
+                  className="w-full bg-[var(--bot-navy)] hover:bg-[var(--bot-navy-dark)]"
+                >
+                  <Plus size={14} /> Add Rule
+                </Button>
+              </form>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-[15px] text-[var(--bot-navy)]">
+                My Rules ({rules.length})
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {rules.length === 0 ? (
+                <div className="text-xs text-gray-500 text-center py-6">
+                  No rules yet.
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {rules.map(r => (
+                    <div key={r.id} className="border border-gray-100 rounded-lg p-3 flex items-start gap-2">
+                      <div className="flex-1 min-w-0">
+                        <div className="text-[13px] font-bold text-[var(--bot-navy)] truncate">
+                          "{r.keyword}"
+                        </div>
+                        <div className="flex gap-1 mt-1.5 flex-wrap">
+                          {r.source !== "all" && (
+                            <span className="text-[10px] bg-gray-100 text-gray-600 rounded px-1.5 py-0.5">{r.source}</span>
+                          )}
+                          {r.topic !== "all" && (
+                            <span className="text-[10px] bg-blue-50 text-blue-700 rounded px-1.5 py-0.5 capitalize">
+                              {r.topic.replace(/_/g, " ")}
+                            </span>
+                          )}
+                          <span className={`text-[10px] rounded px-1.5 py-0.5 font-bold ${
+                            r.priority === "high"   ? "bg-red-50 text-red-700"
+                            : r.priority === "medium" ? "bg-amber-50 text-amber-700"
+                            :                            "bg-green-50 text-green-700"
+                          }`}>
+                            {r.priority}
+                          </span>
+                        </div>
+                      </div>
+                      <button
+                        onClick={() => removeRule(r.id)}
+                        className="text-gray-400 hover:text-red-500 transition p-1"
+                      >
+                        <Trash2 size={13} />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+              <div className="text-[10.5px] text-gray-400 mt-3 pt-3 border-t border-gray-100">
+                Rules are stored in your browser. Automatic delivery is a planned feature.
+              </div>
+            </CardContent>
+          </Card>
+        </div>
       </div>
     </div>
   );
 }
 
-function PriorityCard({
-  label, count, color, icon: Icon,
-}: { label: string; count: number; color: string; icon: React.ComponentType<{ size?: number }> }) {
+function StatBox({
+  icon: Icon, label, value, color,
+}: { icon: React.ComponentType<{ size?: number }>; label: string; value: number; color: string }) {
   return (
     <Card>
-      <CardContent className="flex items-center gap-4 p-5">
+      <CardContent className="flex items-center gap-3 p-4">
         <div
-          className="w-11 h-11 rounded-lg flex items-center justify-center flex-shrink-0"
-          style={{ background: color + "15", color }}
+          className="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0"
+          style={{ background: `${color}15`, color }}
         >
-          <Icon size={20} />
+          <Icon size={18} />
         </div>
         <div>
-          <div className="text-xs text-gray-500 font-semibold">{label}</div>
-          <div className="text-2xl font-extrabold text-[var(--bot-navy)] leading-none mt-1">{count}</div>
+          <div className="text-[11px] text-gray-500 font-semibold">{label}</div>
+          <div className="text-xl font-extrabold text-[var(--bot-navy)] leading-none mt-0.5">{value}</div>
         </div>
       </CardContent>
     </Card>

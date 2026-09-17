@@ -38,12 +38,12 @@ const REL_STYLE = {
   low:    "bg-green-100 text-green-700 border-green-200",
 } as const;
 
-export default function Publications() {
+export default function Publications({ initialTopic = "" }: { initialTopic?: string }) {
   const [pubs, setPubs] = useState<Publication[]>([]);
   const [loading, setLoading] = useState(true);
   const [query, setQuery] = useState("");
   const [institution, setInstitution] = useState("all");
-  const [topic, setTopic] = useState("all");
+  const [topic, setTopic] = useState(initialTopic || "all");
   const [dateRange, setDateRange] = useState("all");
   const [page, setPage] = useState(1);
   const [detail, setDetail] = useState<Publication | null>(null);
@@ -81,7 +81,9 @@ export default function Publications() {
   const pageItems = filtered.slice((page - 1) * PER_PAGE, page * PER_PAGE);
 
   useEffect(() => { setPage(1); }, [institution, topic, dateRange, query]);
-
+  useEffect(() => {
+    if (initialTopic) setTopic(initialTopic);
+  }, [initialTopic]);
   return (
     <div>
       {/* Page head */}

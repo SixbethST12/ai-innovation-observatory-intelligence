@@ -66,9 +66,15 @@ from ..ai.prompts import BOT_DISCLAIMER
 @router.get("/glance")
 def get_glance(months_back: int = Q(3, ge=1, le=12)):
     """
-    Return the top 3 emerging topics and an AI-generated narrative
-    based on the 10 most recent publications in those topics.
+    Return the top 3 emerging topics and an AI-generated narrative.
+    Cached for 10 minutes to avoid re-hitting the LLM on every page load.
     """
+    from ..cache import get as cache_get, set as cache_set
+    cache_key = f"glance:{months_back}"
+    cached = cache_get(cache_key, ttl_seconds=600)
+    if cached is not None:
+        return cached
+
     top3 = emerging_topics(months_back=months_back, top_n=3)
 
     if not top3:
@@ -130,9 +136,11 @@ BRIEF:"""
 
     narrative, engine = ask(prompt, task="summarize")
 
-    return {
+    result = {
         "topics": top3,
         "narrative": narrative,
         "disclaimer": BOT_DISCLAIMER,
         "engine": engine,
     }
+    cache_set(cache_key, result, ttl_seconds=600)
+    return result

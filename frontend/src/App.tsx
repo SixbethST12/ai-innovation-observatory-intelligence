@@ -1,9 +1,8 @@
 /**
  * App.tsx — Root layout with login gate + role-based navigation.
  */
-import { useState } from "react";
-import {
-  LayoutDashboard, FileText, TrendingUp, Tags, Search as SearchIcon,
+import { useState, useEffect } from "react";
+import { LayoutDashboard, FileText, TrendingUp, Tags, Search as SearchIcon,
   BookOpen, Bell, Search, Shield,
   Database, Cog, ScrollText, Users, Activity,
 } from "lucide-react";
@@ -22,6 +21,7 @@ import ManageTopics from "@/pages/admin/ManageTopics";
 import SystemLogs from "@/pages/admin/SystemLogs";
 import ManageUsers from "@/pages/admin/ManageUsers";
 import ServiceControl from "@/pages/admin/ServiceControl";
+import { getAlerts } from "@/lib/api";
 
 type Role = "analyst" | "admin";
 type PageKey =
@@ -50,8 +50,20 @@ const ADMIN_NAV = [
 
 export default function App() {
   const [role, setRole] = useState<Role | null>(null);
+  const [alertsCount, setAlertsCount] = useState(0);
   const [page, setPage] = useState<PageKey>("dashboard");
-
+ const [topicFilter, setTopicFilter] = useState<string>("");
+  useEffect(() => {
+    function onNavigate(e: Event) {
+      const detail = (e as CustomEvent).detail;
+      if (detail?.page) {
+        setPage(detail.page as PageKey);
+        if (detail.topic) setTopicFilter(detail.topic);
+      }
+    }
+    window.addEventListener("navigate", onNavigate);
+    return () => window.removeEventListener("navigate", onNavigate);
+  }, []);
   if (!role) {
     return <Login onLogin={(r) => { setRole(r); setPage(r === "admin" ? "admin-dashboard" : "dashboard"); }} />;
   }
@@ -99,9 +111,11 @@ export default function App() {
               title="Alerts & Notifications"
             >
               <Bell size={18} />
-              <span className="absolute -top-1 -right-1 bg-red-600 text-white text-[10px] font-bold rounded-full min-w-[18px] px-1.5 py-0.5 border-2 border-[var(--bot-cream)]">
-                3
-              </span>
+              {alertsCount > 0 && (
+                <span className="absolute -top-1 -right-1 bg-red-600 text-white text-[10px] font-bold rounded-full min-w-[18px] px-1.5 py-0.5 border-2 border-[var(--bot-cream)]">
+                  {alertsCount}
+                </span>
+              )}
             </button>
 
             <button
@@ -190,7 +204,7 @@ export default function App() {
         <main className="overflow-y-auto p-7 px-9">
           <div className="max-w-[1700px] mx-auto">
             {page === "dashboard" && <Dashboard />}
-            {page === "publications" && <Publications />}
+            {page === "publications" && <Publications initialTopic={topicFilter} />}
             {page === "trends" && <Trends />}
             {page === "topics" && <TopicClassification />}
             {page === "search" && <SearchPage />}
