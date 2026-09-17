@@ -77,29 +77,6 @@ const [readIds, setReadIds] = useState<Set<string>>(() => {
     window.addEventListener("navigate", onNavigate);
     return () => window.removeEventListener("navigate", onNavigate);
   }, []);
-
-  // Fetch full alerts every 10s
-  useEffect(() => {
-    function fetchAlerts() {
-      getAlertsApi()
-        .then(list => { setAlerts(list); setAlertsCount(list.length); })
-        .catch(() => {});
-    }
-    fetchAlerts();
-    const id = setInterval(fetchAlerts, 10000);
-    return () => clearInterval(id);
-  }, []);
-
-  // Persist read state
-  useEffect(() => {
-    localStorage.setItem("observatory_read_alerts", JSON.stringify([...readIds]));
-  }, [readIds]);
-
-  const unreadCount = alerts.filter(a => !readIds.has(a.id)).length;
-
-  function markAllRead() {
-    setReadIds(new Set(alerts.map(a => a.id)));
-  }
   if (!role) {
     return <Login onLogin={(r) => { setRole(r); setPage(r === "admin" ? "admin-dashboard" : "dashboard"); }} />;
   }
@@ -141,98 +118,18 @@ const [readIds, setReadIds] = useState<Set<string>>(() => {
               </button>
             )}
 
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <button
-                  className="w-10 h-10 rounded-full bg-white border border-[#e0d6bf] flex items-center justify-center text-[var(--bot-navy)] relative hover:bg-[var(--bot-gold-soft)] hover:border-[var(--bot-gold)] transition"
-                  title="Alerts & Notifications"
-                >
-                  <Bell size={18} />
-                  {unreadCount > 0 && (
-                    <span className="absolute -top-1 -right-1 bg-red-600 text-white text-[10px] font-bold rounded-full min-w-[18px] px-1.5 py-0.5 border-2 border-[var(--bot-cream)]">
-                      {unreadCount > 9 ? "9+" : unreadCount}
-                    </span>
-                  )}
-                </button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-96 p-0">
-                <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100">
-                  <DropdownMenuLabel className="p-0 text-sm font-bold text-[var(--bot-navy)]">
-                    Alerts ({alerts.length})
-                  </DropdownMenuLabel>
-                  {unreadCount > 0 && (
-                    <button
-                      onClick={markAllRead}
-                      className="text-[11px] text-blue-600 hover:underline font-bold"
-                    >
-                      Mark all as read
-                    </button>
-                  )}
-                </div>
-
-                <div className="max-h-[400px] overflow-y-auto">
-                  {alerts.length === 0 ? (
-                    <div className="py-10 text-center text-sm text-gray-500">
-                      <CheckCircle2 size={32} className="mx-auto text-green-300 mb-2" />
-                      All systems normal
-                    </div>
-                  ) : (
-                    alerts.slice(0, 10).map((a) => {
-                      const Icon =
-                        a.level === "critical" ? AlertCircle :
-                        a.level === "high" || a.level === "medium" ? AlertTriangle :
-                        a.level === "success" ? CheckCircle2 : Info;
-                      const colors = {
-                        critical: "text-red-600",
-                        high: "text-orange-600",
-                        medium: "text-amber-600",
-                        info: "text-blue-600",
-                        success: "text-green-600",
-                      } as Record<string, string>;
-                      const isRead = readIds.has(a.id);
-                      return (
-                        <div
-                          key={a.id}
-                          className={`px-4 py-3 border-b border-gray-50 hover:bg-[var(--bot-gold-soft)] cursor-pointer transition ${isRead ? "opacity-60" : ""}`}
-                          onClick={() => {
-                            setReadIds(new Set([...readIds, a.id]));
-                            setPage("alerts");
-                          }}
-                        >
-                          <div className="flex gap-2.5">
-                            <Icon size={16} className={`flex-shrink-0 mt-0.5 ${colors[a.level] || "text-gray-500"}`} />
-                            <div className="min-w-0 flex-1">
-                              <div className="text-[12.5px] font-bold text-[var(--bot-navy)] line-clamp-1">
-                                {a.title}
-                              </div>
-                              <div className="text-[11px] text-gray-500 line-clamp-2 mt-0.5">
-                                {a.message}
-                              </div>
-                              <div className="text-[10px] text-gray-400 mt-1">
-                                {a.source} · {new Date(a.timestamp).toLocaleString("en-GB", {
-                                  day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit",
-                                })}
-                              </div>
-                            </div>
-                            {!isRead && (
-                              <span className="w-2 h-2 rounded-full bg-blue-500 flex-shrink-0 mt-2" />
-                            )}
-                          </div>
-                        </div>
-                      );
-                    })
-                  )}
-                </div>
-
-                <DropdownMenuSeparator />
-                <DropdownMenuItem
-                  className="justify-center font-bold text-[var(--bot-navy)] py-2.5"
-                  onClick={() => setPage("alerts")}
-                >
-                  View all alerts →
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
+            <button
+              onClick={() => setPage("alerts")}
+              className="w-10 h-10 rounded-full bg-white border border-[#e0d6bf] flex items-center justify-center text-[var(--bot-navy)] relative hover:bg-[var(--bot-gold-soft)] hover:border-[var(--bot-gold)] transition"
+              title="Alerts & Notifications"
+            >
+              <Bell size={18} />
+              {alertsCount > 0 && (
+                <span className="absolute -top-1 -right-1 bg-red-600 text-white text-[10px] font-bold rounded-full min-w-[18px] px-1.5 py-0.5 border-2 border-[var(--bot-cream)]">
+                  {alertsCount}
+                </span>
+              )}
+            </button>
 
             <button
               onClick={logout}
