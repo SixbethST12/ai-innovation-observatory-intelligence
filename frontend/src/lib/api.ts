@@ -177,3 +177,35 @@ export const deleteRule = (id: number) =>
 
 export const getRuleMatches = (limit = 50) =>
   client.get<RuleMatch[]>("/admin/rules/matches", { params: { limit } }).then(r => r.data);
+
+// ============================================================
+// Activity + scheduler
+// ============================================================
+export type ActivityEvent = {
+  type: "job" | "rule_match" | "publication";
+  level: "info" | "success" | "high" | "medium";
+  title: string;
+  message: string;
+  timestamp: string;
+};
+
+export type SchedulerStatus = {
+  running: boolean;
+  interval_minutes: number | null;
+  next_run: string | null;
+};
+
+export const getActivity = (limit = 15) =>
+  client.get<ActivityEvent[]>("/admin/activity", { params: { limit } }).then(r => r.data);
+
+export const getSchedulerStatus = () =>
+  client.get<SchedulerStatus>("/admin/scheduler/status").then(r => r.data);
+
+export const startScheduler = (interval_minutes = 60) =>
+  client.post("/admin/scheduler/start", { interval_minutes }).then(r => r.data);
+
+export const stopScheduler = () =>
+  client.post("/admin/scheduler/stop").then(r => r.data);
+
+export const retryFailed = () =>
+  client.post("/admin/retry-failed").then(r => r.data);
