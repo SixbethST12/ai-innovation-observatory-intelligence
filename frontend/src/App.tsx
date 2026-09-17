@@ -10,7 +10,7 @@ import {
 } from "lucide-react";
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem,
-  DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger,
+  DropdownMenuSeparator, DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { getAlerts as getAlertsApi, type SystemAlert } from "@/lib/api";
 import Login from "@/pages/Login";
@@ -142,24 +142,22 @@ const [readIds, setReadIds] = useState<Set<string>>(() => {
             )}
 
             <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <button
-                  className="w-10 h-10 rounded-full bg-white border border-[#e0d6bf] flex items-center justify-center text-[var(--bot-navy)] relative hover:bg-[var(--bot-gold-soft)] hover:border-[var(--bot-gold)] transition"
-                  title="Alerts & Notifications"
-                >
-                  <Bell size={18} />
-                  {unreadCount > 0 && (
-                    <span className="absolute -top-1 -right-1 bg-red-600 text-white text-[10px] font-bold rounded-full min-w-[18px] px-1.5 py-0.5 border-2 border-[var(--bot-cream)]">
-                      {unreadCount > 9 ? "9+" : unreadCount}
-                    </span>
-                  )}
-                </button>
+              <DropdownMenuTrigger
+                className="w-10 h-10 rounded-full bg-white border border-[#e0d6bf] flex items-center justify-center text-[var(--bot-navy)] relative hover:bg-[var(--bot-gold-soft)] hover:border-[var(--bot-gold)] transition cursor-pointer"
+                title="Alerts & Notifications"
+              >
+                <Bell size={18} />
+                {unreadCount > 0 && (
+                  <span className="absolute -top-1 -right-1 bg-red-600 text-white text-[10px] font-bold rounded-full min-w-[18px] px-1.5 py-0.5 border-2 border-[var(--bot-cream)]">
+                    {unreadCount > 9 ? "9+" : unreadCount}
+                  </span>
+                )}
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-96 p-0">
                 <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100">
-                  <DropdownMenuLabel className="p-0 text-sm font-bold text-[var(--bot-navy)]">
+                  <div className="p-0 text-sm font-bold text-[var(--bot-navy)]">
                     Alerts ({alerts.length})
-                  </DropdownMenuLabel>
+                  </div>
                   {unreadCount > 0 && (
                     <button
                       onClick={markAllRead}
