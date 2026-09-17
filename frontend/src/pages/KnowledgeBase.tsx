@@ -1,312 +1,304 @@
 /**
- * KnowledgeBase.tsx — Browse the corpus by category, recent items, and insights.
+ * KnowledgeBase.tsx — Browse all publications three ways: topic, source, time.
+ *
+ * FEATURES:
+ *   - Top search bar → jumps to Search page with query
+ *   - Browse by Topic (11 large clickable tiles)
+ *   - Browse by Source (4 tiles)
+ *   - Browse by Time (monthly tiles)
+ *   - About section with honest AI disclaimer
+ *   - Click any tile → side drawer with matching publications
  */
 import { useEffect, useState, useMemo } from "react";
 import {
-  FileText, Building2, Tags, Link2, Database, TrendingUp,
-  Sparkles, Search, Download, ArrowRight, ExternalLink,
+  Coins, Shield, Landmark, TrendingUp, Wallet, Cpu, Brain,
+  CreditCard, Lock, Leaf, Users, Building2, Calendar,
+  Search as SearchIcon, ExternalLink, BookOpen, Info, X,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import {
-  Dialog, DialogContent, DialogHeader, DialogTitle,
-} from "@/components/ui/dialog";
-import {
-  getPublications, getTrends, getInstitutions, getEmerging,
-  type Publication, type TopicCount, type InstitutionCount, type EmergingTopic,
-} from "@/lib/api";
+  Sheet, SheetContent, SheetHeader, SheetTitle,
+} from "@/components/ui/sheet";
+import { getPublications, getInstitutions, type Publication, type InstitutionCount } from "@/lib/api";
+
+const TOPIC_META: Record<string, { label: string; icon: React.ComponentType<{ size?: number }>; color: string }> = {
+  monetary_policy:         { label: "Monetary Policy",               icon: Coins,      color: "#1e40af" },
+  financial_stability:     { label: "Financial Stability",           icon: Shield,     color: "#16a34a" },
+  banking_regulation:      { label: "Banking Regulation",            icon: Landmark,   color: "#7c3aed" },
+  financial_markets:       { label: "Financial Markets",             icon: TrendingUp, color: "#0d9488" },
+  digital_finance:         { label: "Digital Finance",               icon: Wallet,     color: "#c8a04a" },
+  fintech:                 { label: "FinTech",                       icon: Cpu,        color: "#dc2626" },
+  artificial_intelligence: { label: "Artificial Intelligence",       icon: Brain,      color: "#0891b2" },
+  payment_systems:         { label: "Payment Systems",               icon: CreditCard, color: "#9333ea" },
+  cybersecurity:           { label: "Cybersecurity",                 icon: Lock,       color: "#b45309" },
+  climate_finance:         { label: "Climate & Sustainable Finance", icon: Leaf,       color: "#15803d" },
+  financial_inclusion:     { label: "Financial Inclusion",           icon: Users,      color: "#be185d" },
+};
+
+type DrawerData = {
+  title: string;
+  items: Publication[];
+} | null;
 
 export default function KnowledgeBase() {
   const [pubs, setPubs] = useState<Publication[]>([]);
-  const [topics, setTopics] = useState<TopicCount[]>([]);
   const [institutions, setInstitutions] = useState<InstitutionCount[]>([]);
-  const [emerging, setEmerging] = useState<EmergingTopic[]>([]);
   const [loading, setLoading] = useState(true);
-  const [openCategory, setOpenCategory] = useState<string | null>(null);
+  const [search, setSearch] = useState("");
+  const [drawer, setDrawer] = useState<DrawerData>(null);
 
   useEffect(() => {
-    Promise.all([getPublications({ limit: 500 }), getTrends(), getInstitutions(), getEmerging(3, 5)])
-      .then(([p, t, i, e]) => {
+    Promise.all([getPublications({ limit: 500 }), getInstitutions()])
+      .then(([p, i]) => {
         setPubs(p);
-        setTopics(t);
         setInstitutions(i);
-        setEmerging(e);
       })
       .finally(() => setLoading(false));
   }, []);
 
+  const topicCounts = useMemo(() => {
+    const m: Record<string, number> = {};
+    Object.keys(TOPIC_META).forEach(slug => { m[slug] = 0; });
+    pubs.forEach(p => {
+      p.ai_topics?.split(",").forEach(t => {
+        const k = t.trim();
+        if (k in m) m[k]++;
+      });
+    });
+    return m;
+  }, [pubs]);
+
+  const monthCounts = useMemo(() => {
+    const m: Record<string, number> = {};
+    pubs.forEach(p => {
+      if (!p.published_date) return;
+      const mo = p.published_date.slice(0, 7);
+      m[mo] = (m[mo] || 0) + 1;
+    });
+    return Object.entries(m)
+      .sort((a, b) => b[0].localeCompare(a[0]))
+      .slice(0, 12);
+  }, [pubs]);
+
   const total = pubs.length;
-  const sources = institutions.length;
-  const totalTopics = topics.length;
 
-  const selectedPubs = useMemo(() => {
-    if (!openCategory) return [];
-    return pubs.filter(p => p.ai_topics?.split(",").includes(openCategory));
-  }, [pubs, openCategory]);
+  function openTopic(slug: string) {
+    const items = pubs.filter(p => p.ai_topics?.split(",").includes(slug));
+    setDrawer({ title: TOPIC_META[slug].label, items });
+  }
 
-  // Compute insights
-  const topTopic = topics[0];
-  const fastestGrowing = emerging[0];
+  function openSource(name: string) {
+    const items = pubs.filter(p => p.institution === name);
+    setDrawer({ title: name, items });
+  }
 
-  function exportCSV() {
-    const headers = ["id", "institution", "title", "published_date", "ai_topics", "source_url"];
-    const rows = pubs.map(p => [
-      p.id, p.institution, `"${p.title.replace(/"/g, '""')}"`,
-      p.published_date || "", p.ai_topics || "", p.source_url,
-    ]);
-    const csv = [headers, ...rows].map(r => r.join(",")).join("\n");
-    const blob = new Blob([csv], { type: "text/csv" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `observatory_publications_${new Date().toISOString().slice(0, 10)}.csv`;
-    a.click();
-    URL.revokeObjectURL(url);
+  function openMonth(month: string) {
+    const items = pubs.filter(p => p.published_date?.startsWith(month));
+    const label = new Date(month + "-01").toLocaleDateString("en-GB", { month: "long", year: "numeric" });
+    setDrawer({ title: label, items });
+  }
+
+  function goToSearch() {
+    window.dispatchEvent(new CustomEvent("navigate", { detail: { page: "search" } }));
   }
 
   if (loading) return <div className="text-center py-20 text-gray-500">Loading knowledge base…</div>;
 
   return (
     <div>
-      {/* Page head */}
+      {/* Page head with search */}
       <div className="mb-6">
         <h1 className="text-2xl font-extrabold text-[var(--bot-navy)] tracking-tight">
           Knowledge Base
         </h1>
         <p className="text-sm text-gray-500 mt-1">
-          Explore the centralized knowledge base of indexed publications, reports, and insights
+          Browse the corpus by topic, source, or time
         </p>
       </div>
 
-      {/* Stat cards */}
-      <div className="grid grid-cols-4 gap-5 mb-6">
-        <Stat icon={FileText} label="Total Documents" value={total} />
-        <Stat icon={Building2} label="Institutions" value={sources} />
-        <Stat icon={Tags} label="Topics" value={totalTopics} />
-        <Stat icon={Link2} label="Source Links" value={pubs.filter(p => p.source_url).length} />
-      </div>
-
-      {/* Row 2 — Categories + Top topics + Overview */}
-      <div className="grid grid-cols-[1fr_1fr_1fr] gap-5 mb-6">
-        {/* Categories */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-[15px] text-[var(--bot-navy)]">Knowledge Base Categories</CardTitle>
-          </CardHeader>
-          <CardContent className="p-0">
-            {topics.map(t => (
-              <button
-                key={t.topic}
-                onClick={() => setOpenCategory(t.topic)}
-                className="w-full flex items-center gap-3 px-5 py-3 border-b border-gray-100 last:border-b-0 hover:bg-[var(--bot-gold-soft)] transition text-left"
-              >
-                <div className="w-8 h-8 rounded-lg bg-[var(--bot-navy-soft)] text-[var(--bot-navy)] flex items-center justify-center">
-                  <Database size={14} />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="text-sm font-semibold text-[var(--bot-navy)] capitalize truncate">
-                    {t.topic.replace(/_/g, " ")}
-                  </div>
-                </div>
-                <span className="text-sm font-extrabold text-[var(--bot-navy)]">{t.count}</span>
-              </button>
-            ))}
-          </CardContent>
-        </Card>
-
-        {/* Top topics (bar chart style) */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-[15px] text-[var(--bot-navy)]">Top Knowledge Base Topics</CardTitle>
-          </CardHeader>
-          <CardContent>
-            {topics.slice(0, 6).map(t => {
-              const max = topics[0]?.count || 1;
-              const pct = Math.round((t.count / max) * 100);
-              return (
-                <div key={t.topic} className="mb-4 last:mb-0">
-                  <div className="flex justify-between text-xs mb-1.5">
-                    <span className="capitalize font-semibold text-gray-700">
-                      {t.topic.replace(/_/g, " ")}
-                    </span>
-                    <span className="text-gray-500">{t.count}</span>
-                  </div>
-                  <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
-                    <div className="h-full bg-[var(--bot-navy)] rounded-full" style={{ width: `${pct}%` }} />
-                  </div>
-                </div>
-              );
-            })}
-          </CardContent>
-        </Card>
-
-        {/* Overview stats */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-[15px] text-[var(--bot-navy)]">Overview</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-3">
-                <InfoBox label="Documents" value={total} />
-                <InfoBox label="Sources" value={sources} />
-                <InfoBox label="Topics" value={totalTopics} />
-                <InfoBox label="AI processed" value={pubs.filter(p => p.ai_processed).length} />
-              </div>
-
-              <div className="border-t border-gray-100 pt-4">
-                <div className="text-xs font-bold uppercase tracking-wider text-gray-500 mb-3">
-                  Top Institutions
-                </div>
-                {institutions.map(i => {
-                  const pct = Math.round((i.count / total) * 100);
-                  return (
-                    <div key={i.institution} className="flex items-center gap-2 py-1.5 text-xs">
-                      <span className="w-20 font-semibold text-gray-700">{i.institution}</span>
-                      <div className="flex-1 h-1.5 bg-gray-100 rounded-full overflow-hidden">
-                        <div className="h-full bg-[var(--bot-gold)]" style={{ width: `${pct}%` }} />
-                      </div>
-                      <span className="text-gray-500 w-10 text-right">{i.count}</span>
-                    </div>
-                  );
-                })}
-              </div>
+      {/* Search bar */}
+      <Card className="mb-6">
+        <CardContent className="p-4">
+          <form
+            onSubmit={(e) => { e.preventDefault(); goToSearch(); }}
+            className="flex gap-2"
+          >
+            <div className="relative flex-1">
+              <SearchIcon size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+              <Input
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Search across all publications…"
+                className="pl-9"
+              />
             </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Row 3 — Recent + Insights */}
-      <div className="grid grid-cols-[1.4fr_1fr] gap-5">
-        {/* Recent items */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-[15px] text-[var(--bot-navy)]">Recent Knowledge Base Items</CardTitle>
-          </CardHeader>
-          <CardContent className="p-0">
-            <table className="w-full">
-              <thead>
-                <tr className="text-[10.5px] uppercase tracking-wider text-gray-400 border-b border-gray-100">
-                  <th className="text-left px-5 py-3 font-bold w-[50%]">Title</th>
-                  <th className="text-left px-3 py-3 font-bold">Source</th>
-                  <th className="text-left px-3 py-3 font-bold">Date</th>
-                  <th className="text-right px-5 py-3 font-bold">Link</th>
-                </tr>
-              </thead>
-              <tbody>
-                {pubs.slice(0, 8).map(p => (
-                  <tr key={p.id} className="border-b border-gray-50 hover:bg-[var(--bot-gold-soft)] transition">
-                    <td className="px-5 py-3">
-                      <div className="text-[13px] font-semibold text-[var(--bot-navy)] leading-snug line-clamp-2">
-                        {p.title}
-                      </div>
-                    </td>
-                    <td className="px-3 py-3">
-                      <Badge variant="outline" className="border-blue-200 bg-blue-50 text-blue-700 font-bold">
-                        {p.institution}
-                      </Badge>
-                    </td>
-                    <td className="px-3 py-3 text-xs text-gray-500 whitespace-nowrap">
-                      {p.published_date
-                        ? new Date(p.published_date).toLocaleDateString("en-GB", {
-                            day: "2-digit", month: "short", year: "numeric",
-                          })
-                        : "—"}
-                    </td>
-                    <td className="px-5 py-3 text-right">
-                      <a
-                        href={p.source_url}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="inline-flex w-7 h-7 rounded-full hover:bg-blue-50 text-blue-600 items-center justify-center transition"
-                      >
-                        <ExternalLink size={12} />
-                      </a>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </CardContent>
-        </Card>
-
-        {/* Insights */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-[15px] text-[var(--bot-navy)]">Knowledge Base Insights</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <InsightRow
-              icon={TrendingUp}
-              title="Most discussed topic"
-              value={topTopic ? topTopic.topic.replace(/_/g, " ") : "—"}
-              sub={topTopic ? `${topTopic.count} publications` : ""}
-            />
-            <InsightRow
-              icon={Sparkles}
-              title="Fastest growing"
-              value={fastestGrowing ? fastestGrowing.topic.replace(/_/g, " ") : "—"}
-              sub={fastestGrowing ? `+${fastestGrowing.score} in last 3 months` : ""}
-            />
-            <InsightRow
-              icon={Building2}
-              title="Top source"
-              value={institutions[0]?.institution || "—"}
-              sub={institutions[0] ? `${institutions[0].count} publications` : ""}
-            />
-            <InsightRow
-              icon={Link2}
-              title="AI engine"
-              value="Ollama qwen2.5:3b"
-              sub="Local, zero-cost inference"
-            />
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Quick Access */}
-      <Card className="mt-5">
-        <CardHeader>
-          <CardTitle className="text-[15px] text-[var(--bot-navy)]">Quick Access</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-4 gap-4">
-            <QuickBtn icon={Search} title="Search Knowledge Base" sub="Find documents, reports and insights" />
-            <QuickBtn icon={Database} title="Browse by Topic" sub="Explore categorized content" onClick={() => setOpenCategory(topics[0]?.topic)} />
-            <QuickBtn icon={Building2} title="Browse by Institution" sub="See what each source publishes" />
-            <QuickBtn icon={Download} title="Export Results" sub="Download search results (CSV)" onClick={exportCSV} />
-          </div>
+            <Button type="submit" className="bg-[var(--bot-navy)] hover:bg-[var(--bot-navy-dark)]">
+              <SearchIcon size={14} /> Search
+            </Button>
+          </form>
         </CardContent>
       </Card>
 
-      {/* Category detail dialog */}
-      <Dialog open={!!openCategory} onOpenChange={(o) => !o && setOpenCategory(null)}>
-        <DialogContent className="max-w-3xl max-h-[85vh] overflow-y-auto">
-          {openCategory && (
-            <>
-              <DialogHeader>
-                <DialogTitle className="text-lg font-bold text-[var(--bot-navy)] capitalize text-left">
-                  {openCategory.replace(/_/g, " ")}
-                  <span className="ml-2 text-sm font-normal text-gray-500">
-                    ({selectedPubs.length} publications)
-                  </span>
-                </DialogTitle>
-              </DialogHeader>
-
-              <div className="space-y-3 mt-4">
-                {selectedPubs.length === 0 ? (
-                  <div className="text-center py-10 text-gray-500">
-                    No publications in this category yet.
+      {/* Browse by Topic */}
+      <div className="mb-8">
+        <div className="flex items-center gap-2 mb-4">
+          <BookOpen size={16} className="text-[var(--bot-gold-dark)]" />
+          <h2 className="text-base font-extrabold text-[var(--bot-navy)]">Browse by Topic</h2>
+          <span className="text-xs text-gray-500 font-semibold">({Object.keys(TOPIC_META).length} categories)</span>
+        </div>
+        <div className="grid grid-cols-3 gap-4">
+          {Object.entries(TOPIC_META).map(([slug, meta]) => {
+            const Icon = meta.icon;
+            const count = topicCounts[slug] || 0;
+            const pct = total ? Math.round((count / total) * 100) : 0;
+            return (
+              <Card
+                key={slug}
+                onClick={() => openTopic(slug)}
+                className="cursor-pointer transition-all duration-200 hover:shadow-lg hover:-translate-y-0.5 hover:border-[var(--bot-gold)] group"
+              >
+                <CardContent className="p-5">
+                  <div className="flex items-start gap-4">
+                    <div
+                      className="w-12 h-12 rounded-lg flex items-center justify-center flex-shrink-0 transition-transform group-hover:scale-110"
+                      style={{ background: `${meta.color}15`, color: meta.color }}
+                    >
+                      <Icon size={22} />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="text-sm font-bold text-[var(--bot-navy)] leading-tight">
+                        {meta.label}
+                      </div>
+                      <div className="text-xs text-gray-500 mt-1.5 font-semibold">
+                        {count} {count === 1 ? "document" : "documents"} · {pct}%
+                      </div>
+                      <div className="mt-3 h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                        <div
+                          className="h-full rounded-full transition-all"
+                          style={{ width: `${pct}%`, background: meta.color }}
+                        />
+                      </div>
+                    </div>
                   </div>
+                </CardContent>
+              </Card>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Browse by Source */}
+      <div className="mb-8">
+        <div className="flex items-center gap-2 mb-4">
+          <Building2 size={16} className="text-[var(--bot-gold-dark)]" />
+          <h2 className="text-base font-extrabold text-[var(--bot-navy)]">Browse by Source</h2>
+        </div>
+        <div className="grid grid-cols-4 gap-4">
+          {institutions.map(inst => {
+            const pct = total ? Math.round((inst.count / total) * 100) : 0;
+            return (
+              <Card
+                key={inst.institution}
+                onClick={() => openSource(inst.institution)}
+                className="cursor-pointer transition-all duration-200 hover:shadow-lg hover:-translate-y-0.5 hover:border-[var(--bot-gold)]"
+              >
+                <CardContent className="p-5 text-center">
+                  <div className="text-3xl font-extrabold text-[var(--bot-navy)]">{inst.count}</div>
+                  <div className="text-sm font-bold text-[var(--bot-navy)] mt-1">{inst.institution}</div>
+                  <div className="text-[11px] text-gray-500 mt-1 font-semibold">{pct}% of corpus</div>
+                </CardContent>
+              </Card>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Browse by Time */}
+      <div className="mb-8">
+        <div className="flex items-center gap-2 mb-4">
+          <Calendar size={16} className="text-[var(--bot-gold-dark)]" />
+          <h2 className="text-base font-extrabold text-[var(--bot-navy)]">Browse by Time</h2>
+          <span className="text-xs text-gray-500 font-semibold">(last 12 active months)</span>
+        </div>
+        <div className="grid grid-cols-6 gap-3">
+          {monthCounts.map(([month, count]) => {
+            const label = new Date(month + "-01").toLocaleDateString("en-GB", { month: "short", year: "numeric" });
+            return (
+              <Card
+                key={month}
+                onClick={() => openMonth(month)}
+                className="cursor-pointer transition-all duration-200 hover:shadow-md hover:-translate-y-0.5 hover:border-[var(--bot-gold)]"
+              >
+                <CardContent className="p-4 text-center">
+                  <div className="text-xl font-extrabold text-[var(--bot-navy)]">{count}</div>
+                  <div className="text-[11px] font-bold text-gray-500 mt-1 uppercase tracking-wide">
+                    {label}
+                  </div>
+                </CardContent>
+              </Card>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* About */}
+      <Card className="border-[var(--bot-gold-light)] bg-[var(--bot-gold-soft)]">
+        <CardHeader>
+          <CardTitle className="text-[14px] text-[var(--bot-navy)] font-bold flex items-center gap-2">
+            <Info size={15} className="text-[var(--bot-gold-dark)]" />
+            About this Knowledge Base
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <ul className="text-[12.5px] text-gray-700 space-y-1.5 leading-relaxed">
+            <li>• <strong>{total} publications</strong> from <strong>{institutions.length} approved sources</strong> (BIS, IMF, World Bank, CBK)</li>
+            <li>• AI-classified into <strong>11 canonical central banking topics</strong> using <strong>Ollama qwen2.5:3b</strong></li>
+            <li>• Every summary, classification, and relevance note is <strong>AI-generated</strong></li>
+            <li>• Always verify against the original source — link available on every publication</li>
+            <li>• For accuracy limits see <code className="bg-white px-1.5 rounded">docs/AI_LIMITATIONS.md</code></li>
+          </ul>
+        </CardContent>
+      </Card>
+
+      {/* Drawer */}
+      <Sheet open={!!drawer} onOpenChange={(o) => !o && setDrawer(null)}>
+        <SheetContent side="right" className="w-full sm:max-w-2xl overflow-y-auto p-0">
+          {drawer && (
+            <div className="flex flex-col h-full">
+              <SheetHeader className="p-6 border-b border-gray-100">
+                <div className="flex items-center justify-between mb-2">
+                  <Badge variant="outline" className="border-blue-200 bg-blue-50 text-blue-700 font-bold">
+                    {drawer.items.length} {drawer.items.length === 1 ? "document" : "documents"}
+                  </Badge>
+                  <button
+                    onClick={() => setDrawer(null)}
+                    className="text-gray-400 hover:text-gray-700"
+                  >
+                    <X size={16} />
+                  </button>
+                </div>
+                <SheetTitle className="text-lg font-bold text-[var(--bot-navy)] text-left">
+                  {drawer.title}
+                </SheetTitle>
+              </SheetHeader>
+
+              <div className="flex-1 p-6 space-y-3">
+                {drawer.items.length === 0 ? (
+                  <div className="text-center py-10 text-gray-500">No publications in this category.</div>
                 ) : (
-                  selectedPubs.map(p => (
-                    <div key={p.id} className="border border-gray-100 rounded-lg p-4 hover:border-[var(--bot-gold)] transition">
-                      <div className="flex gap-2 mb-2">
-                        <Badge variant="outline" className="border-blue-200 bg-blue-50 text-blue-700 font-bold">
+                  drawer.items.map(p => (
+                    <div
+                      key={p.id}
+                      className="border border-gray-100 rounded-lg p-4 transition-all hover:border-[var(--bot-gold)] hover:bg-[var(--bot-gold-soft)]"
+                    >
+                      <div className="flex items-center gap-2 mb-2">
+                        <Badge variant="outline" className="border-blue-200 bg-blue-50 text-blue-700 font-bold text-[10.5px]">
                           {p.institution}
                         </Badge>
-                        <span className="text-xs text-gray-500 self-center">
+                        <span className="text-[11px] text-gray-500 font-semibold">
                           {p.published_date
                             ? new Date(p.published_date).toLocaleDateString("en-GB", {
                                 day: "2-digit", month: "short", year: "numeric",
@@ -318,86 +310,31 @@ export default function KnowledgeBase() {
                         href={p.source_url}
                         target="_blank"
                         rel="noreferrer"
-                        className="text-sm font-semibold text-[var(--bot-navy)] hover:text-blue-600 leading-snug block"
+                        className="text-[13.5px] font-bold text-[var(--bot-navy)] hover:text-blue-600 leading-snug block"
                       >
                         {p.title}
                       </a>
                       {p.ai_summary && (
-                        <div className="text-xs text-gray-500 mt-2 line-clamp-2">
+                        <div className="text-[11.5px] text-gray-500 mt-2 line-clamp-2">
                           {p.ai_summary.replace(/^\d+\.\s/gm, "").slice(0, 200)}…
                         </div>
                       )}
+                      <a
+                        href={p.source_url}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="inline-flex items-center gap-1 text-[11px] text-blue-600 font-bold mt-2 hover:underline"
+                      >
+                        Open source <ExternalLink size={10} />
+                      </a>
                     </div>
                   ))
                 )}
               </div>
-            </>
+            </div>
           )}
-        </DialogContent>
-      </Dialog>
+        </SheetContent>
+      </Sheet>
     </div>
-  );
-}
-
-function Stat({
-  icon: Icon, label, value,
-}: { icon: React.ComponentType<{ size?: number }>; label: string; value: number }) {
-  return (
-    <Card>
-      <CardContent className="flex items-center gap-4 p-5">
-        <div className="bg-[var(--bot-gold-soft)] text-[var(--bot-gold-dark)] p-3 rounded-lg">
-          <Icon size={20} />
-        </div>
-        <div>
-          <div className="text-xs text-gray-500 font-semibold">{label}</div>
-          <div className="text-2xl font-extrabold text-[var(--bot-navy)] leading-none mt-1">{value}</div>
-        </div>
-      </CardContent>
-    </Card>
-  );
-}
-
-function InfoBox({ label, value }: { label: string; value: number }) {
-  return (
-    <div className="bg-gray-50 rounded-lg p-3 text-center">
-      <div className="text-xl font-extrabold text-[var(--bot-navy)]">{value}</div>
-      <div className="text-[10.5px] text-gray-500 mt-1 font-semibold uppercase tracking-wide">
-        {label}
-      </div>
-    </div>
-  );
-}
-
-function InsightRow({
-  icon: Icon, title, value, sub,
-}: { icon: React.ComponentType<{ size?: number }>; title: string; value: string; sub: string }) {
-  return (
-    <div className="flex gap-3 items-start">
-      <div className="w-9 h-9 rounded-lg bg-[var(--bot-gold-soft)] text-[var(--bot-gold-dark)] flex items-center justify-center flex-shrink-0">
-        <Icon size={16} />
-      </div>
-      <div className="flex-1 min-w-0">
-        <div className="text-[11px] text-gray-500 uppercase tracking-wide font-bold">{title}</div>
-        <div className="text-sm font-bold text-[var(--bot-navy)] capitalize truncate mt-0.5">{value}</div>
-        {sub && <div className="text-[11px] text-gray-500 mt-0.5">{sub}</div>}
-      </div>
-    </div>
-  );
-}
-
-function QuickBtn({
-  icon: Icon, title, sub, onClick,
-}: { icon: React.ComponentType<{ size?: number }>; title: string; sub: string; onClick?: () => void }) {
-  return (
-    <button
-      onClick={onClick}
-      className="text-left p-4 rounded-lg border border-gray-100 hover:border-[var(--bot-gold)] hover:bg-[var(--bot-gold-soft)] transition"
-    >
-      <div className="w-9 h-9 rounded-lg bg-[var(--bot-navy-soft)] text-[var(--bot-navy)] flex items-center justify-center mb-2.5">
-        <Icon size={16} />
-      </div>
-      <div className="text-[13px] font-bold text-[var(--bot-navy)]">{title}</div>
-      <div className="text-[11px] text-gray-500 mt-1">{sub}</div>
-    </button>
   );
 }
