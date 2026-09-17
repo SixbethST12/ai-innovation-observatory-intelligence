@@ -296,3 +296,98 @@ def list_matches(limit: int = 50, db: Session = Depends(get_db)):
         }
         for m, r, p in rows
     ]
+
+
+# ============================================================
+# Activity feed
+# ============================================================
+@router.get("/activity")
+def get_activity(limit: int = 15):
+    from ..activity import build_activity
+    return build_activity(limit=limit)
+
+
+# ============================================================
+# Scheduler control
+# ============================================================
+from apscheduler.schedulers.background import BackgroundScheduler
+
+_scheduler = BackgroundScheduler(timezone="UTC")
+_scheduler_job = {"id": None, "interval_minutes": None}
+
+
+def _scheduled_collect():
+    from ..collectors.scheduler import run_all
+    from ..storage import save_publications
+    try:
+        result = save_publications(run_all())
+        print(f"[scheduler] auto-collect: {result}")
+    except Exception as e:
+        print(f"[scheduler] auto-collect failed: {e}")
+
+
+@router.get("/scheduler/status")
+def scheduler_status():
+    return {
+        "running": _scheduler.running and _scheduler_job["id"] is not None,
+        "interval_minutes": _scheduler_job["interval_minutes"],
+        "next_run": str(_scheduler.get_job(_scheduler_job["id"]).next_run_time) if _scheduler_job["id"] else None,
+    }
+
+
+class SchedulerStart(BaseModel):
+    interval_minutes: int = 60
+
+
+@router.post("/scheduler/start")
+def scheduler_start(payload: SchedulerStart):
+    if not _scheduler.running:
+        _scheduler.start()
+    # Remove existing job if any
+    if _scheduler_job["id"]:
+        try:
+            _scheduler.remove_job(_scheduler_job["id"])
+        except Exception:
+            pass
+    job = _scheduler.add_job(
+        _scheduled_collect,
+        "interval",
+        minutes=payload.interval_minutes,
+        id="auto_collect",
+    )
+    _scheduler_job["id"] = job.id
+    _scheduler_job["interval_minutes"] = payload.interval_minutes
+    return {"started": True, "interval_minutes": payload.interval_minutes}
+
+
+@router.post("/scheduler/stop")
+def scheduler_stop():
+    if _scheduler_job["id"]:
+        try:
+            _scheduler.remove_job(_scheduler_job["id"])
+        except Exception:
+            pass
+        _scheduler_job["id"] = None
+        _scheduler_job["interval_minutes"] = None
+    return {"stopped": True}
+
+
+@router.post("/retry-failed")
+def retry_failed():
+    """Reset rule-based rows so the AI pipeline reprocesses them."""
+    from ..models import PublicationRow
+    from ..database import SessionLocal
+    db = SessionLocal()
+    try:
+        count = db.query(PublicationRow).filter(PublicationRow.ai_engine == "rule-based").update({
+            PublicationRow.ai_processed: False,
+            PublicationRow.ai_summary: None,
+            PublicationRow.ai_topics: None,
+            PublicationRow.ai_relevance: None,
+            PublicationRow.ai_engine: None,
+            PublicationRow.ai_processed_at: None,
+        }, synchronize_session=False)
+        db.commit()
+        return {"reset": count, "message": f"{count} rows reset for AI reprocessing"}
+    finally:
+        db.close()
