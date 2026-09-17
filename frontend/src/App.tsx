@@ -5,7 +5,7 @@ import { useState, useEffect } from "react";
 import {
   LayoutDashboard, FileText, TrendingUp, Tags, Search as SearchIcon,
   BookOpen, Bell, Search, Shield,
-  Database, Cog, ScrollText, Users, Activity,
+  Database, Cog, Users, Activity,
   AlertCircle, AlertTriangle, CheckCircle2, Info,
 } from "lucide-react";
 import {
@@ -24,7 +24,6 @@ import Alerts from "@/pages/Alerts";
 import AdminDashboard from "@/pages/admin/AdminDashboard";
 import ManageSources from "@/pages/admin/ManageSources";
 import ManageTopics from "@/pages/admin/ManageTopics";
-import SystemLogs from "@/pages/admin/SystemLogs";
 import ManageUsers from "@/pages/admin/ManageUsers";
 import ServiceControl from "@/pages/admin/ServiceControl";
 import { getAlerts } from "@/lib/api";
@@ -32,7 +31,7 @@ import { getAlerts } from "@/lib/api";
 type Role = "analyst" | "admin";
 type PageKey =
   | "dashboard" | "publications" | "trends" | "topics" | "search" | "kb" | "alerts"
-  | "admin-dashboard" | "admin-sources" | "admin-topics" | "admin-logs" | "admin-users" | "admin-services";
+  | "admin-dashboard" | "admin-sources" | "admin-topics" | "admin-users" | "admin-services";
 
 const ANALYST_NAV = [
   { key: "dashboard",    label: "Dashboard",              icon: LayoutDashboard },
@@ -48,7 +47,6 @@ const ADMIN_NAV = [
   { key: "admin-dashboard", label: "Admin Panel",    icon: Cog },
   { key: "admin-sources",   label: "Manage Sources", icon: Database },
   { key: "admin-topics",    label: "Manage Topics",  icon: Tags },
-  { key: "admin-logs",      label: "System Logs",    icon: ScrollText },
   { key: "admin-users",     label: "Manage Users",   icon: Users },
   { key: "admin-services",  label: "Service Control",        icon: Activity },
   { key: "alerts",          label: "Alerts & Notifications", icon: Bell },
@@ -327,7 +325,6 @@ const [readIds, setReadIds] = useState<Set<string>>(() => {
             {page === "admin-dashboard" && <AdminDashboard />}
             {page === "admin-sources" && <ManageSources />}
             {page === "admin-topics" && <ManageTopics />}
-            {page === "admin-logs" && <SystemLogs />}
             {page === "admin-users" && <ManageUsers />}
             {page === "admin-services" && <ServiceControl />}
           </div>
