@@ -17,12 +17,16 @@ export type Publication = {
   ai_processed: boolean;
 };
 
-export type Stats = {
+export type ExtendedStats = {
   total_publications: number;
+  visible_publications: number;
   total_processed: number;
   total_institutions: number;
   total_topics: number;
+  orphaned_institutions: string[];
 };
+
+export type Stats = ExtendedStats;
 
 export type TopicCount = { topic: string; count: number };
 export type InstitutionCount = { institution: string; count: number };

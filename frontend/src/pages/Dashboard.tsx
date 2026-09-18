@@ -180,18 +180,35 @@ export default function Dashboard() {
 
       {/* Stat cards */}
       <div className="grid grid-cols-4 gap-5 mb-6">
-        <StatCard icon={FileText} label="Total Publications"
-                  value={stats?.total_publications ?? 0}
-                  sub="↑ from 4 approved sources" tone="gold" />
-        <StatCard icon={Building2} label="Sources Monitored"
-                  value={stats?.total_institutions ?? 0}
-                  sub="BIS · IMF · World Bank · CBK" tone="blue" />
-        <StatCard icon={TrendingUp} label="Emerging Trends"
-                  value={emerging.length}
-                  sub="across last 3 months" tone="green" />
-        <StatCard icon={Sparkles} label="AI Processed"
-                  value={stats?.total_processed ?? 0}
-                  sub={`of ${stats?.total_publications ?? 0} publications`} tone="purple" />
+        <StatCard
+          icon={FileText}
+          label="Total Publications"
+          value={stats?.total_publications ?? 0}
+          tone="gold"
+        />
+        <StatCard
+          icon={Building2}
+          label="Sources Monitored"
+          value={stats?.total_institutions ?? 0}
+          tone="blue"
+          warning={
+            (stats?.orphaned_institutions?.length ?? 0) > 0
+              ? `+${stats!.orphaned_institutions.length} orphaned (${stats!.orphaned_institutions.join(", ")})`
+              : undefined
+          }
+        />
+        <StatCard
+          icon={TrendingUp}
+          label="Emerging Trends"
+          value={emerging.length}
+          tone="green"
+        />
+        <StatCard
+          icon={Sparkles}
+          label="AI Processed"
+          value={stats?.total_processed ?? 0}
+          tone="purple"
+        />
       </div>
 
       {/* Row 2 — Source | Subjects | Emerging */}
@@ -541,13 +558,13 @@ export default function Dashboard() {
 }
 
 function StatCard({
-  icon: Icon, label, value, sub, tone,
+  icon: Icon, label, value, tone, warning,
 }: {
   icon: React.ComponentType<{ size?: number }>;
   label: string;
   value: number;
-  sub: string;
   tone: "gold" | "blue" | "green" | "purple";
+  warning?: string;
 }) {
   const tones = {
     gold:   { bg: "bg-[var(--bot-gold-soft)]",  text: "text-[var(--bot-gold-dark)]", accent: "from-[var(--bot-gold)] to-[var(--bot-gold-dark)]" },
@@ -568,7 +585,11 @@ function StatCard({
           <div className="text-[30px] font-extrabold text-[var(--bot-navy)] leading-none mt-1.5 tracking-tight">
             {value}
           </div>
-          <div className="text-[11px] text-green-600 font-bold mt-1.5">{sub}</div>
+          {warning && (
+            <div className="text-[10.5px] text-amber-600 font-bold mt-1.5 leading-tight">
+              ⚠ {warning}
+            </div>
+          )}
         </div>
       </CardContent>
     </Card>
