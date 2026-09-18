@@ -51,8 +51,15 @@ export const getTrendTimeline = () =>
   client.get<Record<string, Record<string, number>>>("/trends/timeline").then(r => r.data);
 export const getEmerging = (months_back = 3, top_n = 5) =>
   client.get<EmergingTopic[]>("/trends/emerging", { params: { months_back, top_n } }).then(r => r.data);
-export const getInstitutions = () =>
-  client.get<InstitutionCount[]>("/trends/institutions").then(r => r.data);
+export const getInstitutions = async (): Promise<InstitutionCount[]> => {
+  const res = await client.get<any>("/trends/institutions");
+  // Backward-compatible: accept either an array or {institutions: [...]}
+  if (Array.isArray(res.data)) return res.data;
+  return res.data?.institutions ?? [];
+};
+
+export const getInstitutionsFull = () =>
+  client.get<InstitutionsResponse>("/trends/institutions").then(r => r.data);
 
 export type GlanceTopic = { topic: string; recent: number; prior: number; score: number };
 export type GlanceData = {
@@ -297,3 +304,10 @@ export const createManualPub = (payload: {
   abstract?: string;
   run_ai?: boolean;
 }) => client.post("/admin/publications/manual", payload).then(r => r.data);
+
+// Updated institution distribution shape
+export type InstitutionsResponse = {
+  institutions: InstitutionCount[];
+  hidden_count: number;
+  orphaned_count: number;
+};

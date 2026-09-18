@@ -14,7 +14,7 @@ import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid,
 } from "recharts";
 import {
-  getStats, getTrends, getInstitutions, getEmerging,
+  getStats, getTrends, getInstitutions, getInstitutionsFull, getEmerging,
   getPublications, getTimeline, getGlance, getAlerts,
   type Stats, type TopicCount, type InstitutionCount,
   type EmergingTopic, type Publication, type GlanceData, type SystemAlert,
@@ -34,6 +34,8 @@ export default function Dashboard() {
   const [stats, setStats] = useState<Stats | null>(null);
   const [topics, setTopics] = useState<TopicCount[]>([]);
   const [institutions, setInstitutions] = useState<InstitutionCount[]>([]);
+  const [hiddenCount, setHiddenCount] = useState(0);
+  const [orphanedCount, setOrphanedCount] = useState(0);
   const [emerging, setEmerging] = useState<EmergingTopic[]>([]);
   const [recent, setRecent] = useState<Publication[]>([]);
   const [allPubs, setAllPubs] = useState<Publication[]>([]);
@@ -69,6 +71,14 @@ export default function Dashboard() {
 
     // Glance is slow (LLM) — load independently
     getGlance().then(setGlance).catch(() => {});
+
+    // Full institution breakdown (for hidden/orphaned counts)
+    getInstitutionsFull()
+      .then(res => {
+        setHiddenCount(res.hidden_count);
+        setOrphanedCount(res.orphaned_count);
+      })
+      .catch(() => {});
   }, []);
 
   // Time filter — recompute `recent` when range changes
@@ -88,7 +98,7 @@ export default function Dashboard() {
 
   if (loading) return <div className="text-center py-20 text-gray-500">Loading dashboard…</div>;
 
-  const total = institutions.reduce((s, d) => s + d.count, 0);
+  const total = (institutions || []).reduce((s, d) => s + d.count, 0);
 
   // High-relevance pubs — score by topic count + recency
   const highRelevance = [...allPubs]
@@ -226,7 +236,7 @@ export default function Dashboard() {
                 <PieChart>
                   <Pie data={institutions} dataKey="count" nameKey="institution"
                        innerRadius={55} outerRadius={90} paddingAngle={2}>
-                    {institutions.map((_, i) => (
+                    {(institutions || []).map((_, i) => (
                       <Cell key={i} fill={COLORS[i % COLORS.length]} />
                     ))}
                   </Pie>
@@ -236,7 +246,7 @@ export default function Dashboard() {
               <div>
                 <div className="text-2xl font-extrabold text-[var(--bot-navy)]">{total}</div>
                 <div className="text-xs text-gray-500 mb-3 font-semibold">Total</div>
-                {institutions.map((d, i) => {
+                {(institutions || []).map((d, i) => {
                   const pct = total ? Math.round((d.count / total) * 100) : 0;
                   return (
                     <div key={d.institution}
@@ -253,6 +263,24 @@ export default function Dashboard() {
                     </div>
                   );
                 })}
+
+                {/* Hidden / orphaned indicators */}
+                {(hiddenCount > 0 || orphanedCount > 0) && (
+                  <div className="mt-3 pt-3 border-t border-gray-100 space-y-1.5">
+                    {hiddenCount > 0 && (
+                      <div className="flex items-center gap-1.5 text-[10.5px] text-gray-500 font-bold">
+                        <span className="w-1.5 h-1.5 rounded-full bg-gray-400" />
+                        {hiddenCount} hidden publication{hiddenCount === 1 ? "" : "s"}
+                      </div>
+                    )}
+                    {orphanedCount > 0 && (
+                      <div className="flex items-center gap-1.5 text-[10.5px] text-amber-600 font-bold">
+                        <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
+                        {orphanedCount} orphaned (source deleted)
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
             </div>
           </CardContent>

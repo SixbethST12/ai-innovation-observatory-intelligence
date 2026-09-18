@@ -1,31 +1,20 @@
 """
-trends.py — API endpoints for topic trends and emerging themes.
-
-PURPOSE:
-    Serve pre-computed trend data from app.ai.trends to the dashboard.
-
-RESPONSIBILITIES:
-    GET /trends              — topic frequencies
-    GET /trends/timeline     — topic mentions per month
-    GET /trends/emerging     — top emerging topics
-    GET /trends/institutions — publications per source
-
-USED BY:
-    - Frontend Trends view
-    - Frontend Overview dashboard
-
-NOTES:
-    - No LLM calls here; all computation is on the DB.
+trends.py — Trend analysis endpoints.
 """
+from fastapi import APIRouter, Query as Q, Depends
+from sqlalchemy.orm import Session
+from sqlalchemy import func
 
-from fastapi import APIRouter, Query
-
+from ..database import get_db, SessionLocal
+from ..models import PublicationRow, Source
 from ..ai.trends import (
     topic_frequencies,
     topic_timeline,
     emerging_topics,
     institution_distribution,
 )
+from ..ai.llm import ask
+from ..ai.prompts import BOT_DISCLAIMER
 from ..schemas import TopicCount, InstitutionCount, EmergingTopic
 
 
@@ -43,32 +32,54 @@ def get_topic_timeline():
 
 
 @router.get("/emerging", response_model=list[EmergingTopic])
-def get_emerging(months_back: int = Query(3, ge=1, le=12), top_n: int = Query(5, ge=1, le=20)):
+def get_emerging(months_back: int = Q(3, ge=1, le=12), top_n: int = Q(5, ge=1, le=20)):
     return emerging_topics(months_back=months_back, top_n=top_n)
 
 
-@router.get("/institutions", response_model=list[InstitutionCount])
-def get_institution_distribution():
-    return institution_distribution()
+@router.get("/institutions")
+def get_institution_distribution(db: Session = Depends(get_db)):
+    """
+    Return publication counts per institution, with hidden count separate.
+    Only counts publications from active sources (built-in + user sources).
+    """
+    BUILTIN = {"BIS", "IMF", "World Bank", "CBK"}
+    custom = {row.name for row in db.query(Source).all()}
+    active = BUILTIN | custom
+
+    # Visible per source
+    rows = (
+        db.query(PublicationRow.institution, func.count(PublicationRow.id))
+        .filter(PublicationRow.hidden.is_(False))
+        .filter(PublicationRow.institution.in_(active))
+        .group_by(PublicationRow.institution)
+        .all()
+    )
+    result = [{"institution": name, "count": count} for name, count in rows]
+
+    # Hidden count
+    hidden = (
+        db.query(func.count(PublicationRow.id))
+        .filter(PublicationRow.hidden.is_(True))
+        .scalar() or 0
+    )
+    orphaned = (
+        db.query(func.count(PublicationRow.id))
+        .filter(~PublicationRow.institution.in_(active))
+        .scalar() or 0
+    )
+
+    return {
+        "institutions": result,
+        "hidden_count": hidden,
+        "orphaned_count": orphaned,
+    }
 
 
 # ============================================================
-# Intelligence at a Glance — top 3 topics + AI narrative
+# Intelligence at a Glance
 # ============================================================
-from fastapi import Query as Q
-from ..database import SessionLocal
-from ..models import PublicationRow
-from ..ai.trends import emerging_topics
-from ..ai.llm import ask
-from ..ai.prompts import BOT_DISCLAIMER
-
-
 @router.get("/glance")
 def get_glance(months_back: int = Q(3, ge=1, le=12)):
-    """
-    Return the top 3 emerging topics and an AI-generated narrative.
-    Cached for 10 minutes to avoid re-hitting the LLM on every page load.
-    """
     from ..cache import get as cache_get, set as cache_set
     cache_key = f"glance:{months_back}"
     cached = cache_get(cache_key, ttl_seconds=600)
@@ -76,7 +87,6 @@ def get_glance(months_back: int = Q(3, ge=1, le=12)):
         return cached
 
     top3 = emerging_topics(months_back=months_back, top_n=3)
-
     if not top3:
         return {
             "topics": [],
@@ -85,13 +95,13 @@ def get_glance(months_back: int = Q(3, ge=1, le=12)):
             "engine": "rule-based",
         }
 
-    # Fetch 10 most recent publications that match any of the top 3 topics
     slugs = [t["topic"] for t in top3]
     db = SessionLocal()
     try:
         candidates = (
             db.query(PublicationRow)
             .filter(PublicationRow.ai_processed.is_(True))
+            .filter(PublicationRow.hidden.is_(False))
             .order_by(PublicationRow.published_date.desc().nullslast())
             .limit(80)
             .all()
@@ -108,14 +118,11 @@ def get_glance(months_back: int = Q(3, ge=1, le=12)):
     finally:
         db.close()
 
-    # Build context for the LLM
     context_lines = []
     for p in picked:
         topics = p.ai_topics or ""
         summary = (p.ai_summary or p.abstract or "").replace("\n", " ")[:220]
-        context_lines.append(
-            f"- [{p.institution}] {p.title} (topics: {topics}) — {summary}"
-        )
+        context_lines.append(f"- [{p.institution}] {p.title} (topics: {topics}) — {summary}")
     context = "\n".join(context_lines) if context_lines else "(no recent matching publications)"
 
     topic_list = ", ".join(t["topic"].replace("_", " ") for t in top3)
@@ -147,7 +154,7 @@ BRIEF:"""
 
 
 # ============================================================
-# Trend insights — rule-based bullets + AI narrative
+# Insights — rule-based bullets + AI narrative
 # ============================================================
 from ..trend_insights import generate_insights
 
