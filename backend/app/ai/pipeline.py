@@ -32,12 +32,19 @@ from .relevance import relevance
 
 
 def _input_text(pub: PublicationRow) -> str:
-    """Pick the best available text for the AI modules."""
-    if pub.abstract and pub.abstract.strip():
-        return pub.abstract
+    """
+    Pick the best available text for the AI modules.
+
+    Priority: raw_content > abstract > title.
+    Using title as last resort lets the AI infer something even when
+    the source provided no abstract (common for IMF items).
+    """
     if pub.raw_content and pub.raw_content.strip():
         return pub.raw_content
-    return ""
+    if pub.abstract and pub.abstract.strip():
+        return pub.abstract
+    # Fallback: title alone (helps IMF and other thin sources)
+    return pub.title or ""
 
 
 def process_pending(limit: int | None = None) -> dict:
@@ -69,7 +76,7 @@ def process_pending(limit: int | None = None) -> dict:
                 print(f"[pipeline] ({i}/{total_pending}) {pub.institution}: {pub.title[:60]}")
 
                 summary, sum_engine = summarize(pub.title, text)
-                topics, cls_engine = classify(pub.title, text)
+                topics, cls_engine = classify(pub.title, text, pub.institution)
                 rel, rel_engine = relevance(pub.title, text)
 
                 # Engine priority: ollama > rule-based
