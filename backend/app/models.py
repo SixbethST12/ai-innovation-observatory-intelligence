@@ -96,3 +96,16 @@ class Source(Base):
     builtin = Column(Boolean, default=False, nullable=False)
     added_by = Column(String, nullable=True)
     added_at = Column(DateTime, server_default=func.now(), nullable=False)
+
+
+class Topic(Base):
+    """Dynamic topic category — replaces the hardcoded topics.py list."""
+    __tablename__ = "topics"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    slug = Column(String, nullable=False, unique=True, index=True)
+    label = Column(String, nullable=False)
+    keywords = Column(String, nullable=False)   # comma-separated
+    active = Column(Boolean, default=True, nullable=False)
+    is_builtin = Column(Boolean, default=False, nullable=False)
+    created_at = Column(DateTime, server_default=func.now(), nullable=False)

@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session
 from ..database import get_db
 from ..models import PublicationRow, Source
 from ..schemas import StatsOut
-from ..topics import TOPIC_SLUGS
+from ..topic_store import list_topics
 
 
 router = APIRouter(prefix="/stats", tags=["stats"])
@@ -53,7 +53,7 @@ def get_stats(db: Session = Depends(get_db)):
         "visible_publications": visible_pubs,
         "total_processed": processed,
         "total_institutions": len(active_sources),
-        "total_topics": len(TOPIC_SLUGS),
+        "total_topics": len(list_topics()),
         "orphaned_institutions": orphaned,
     }
 

@@ -21,13 +21,14 @@ NOTES:
 """
 
 from fastapi import APIRouter, Depends
+from pydantic import BaseModel
 from sqlalchemy.orm import Session
 from sqlalchemy import func
 
 from ..database import get_db
 from ..models import PublicationRow
 from ..config import LLM_MODEL, OLLAMA_URL
-from ..topics import TOPICS
+from ..topic_store import list_topics as _list_topics_db, add_topic, delete_topic
 from ..jobs.manager import start_job, get_status
 
 
@@ -78,7 +79,7 @@ def get_system():
     return {
         "llm_model": LLM_MODEL,
         "ollama_url": OLLAMA_URL,
-        "topics_count": len(TOPICS),
+        "topics_count": len(_list_topics_db()),
     }
 
 
@@ -114,12 +115,43 @@ def list_sources():
 
 
 @router.get("/topics")
-def list_topics():
-    """List the 11 canonical topic categories."""
-    return [
-        {"slug": slug, "label": meta["label"], "keywords": meta["keywords"]}
-        for slug, meta in TOPICS.items()
-    ]
+def list_topics_endpoint():
+    """List all topic categories from the DB."""
+    return _list_topics_db()
+
+
+class TopicCreate(BaseModel):
+    slug: str
+    label: str
+    keywords: list[str] = []
+
+
+@router.post("/topics")
+def create_topic_endpoint(payload: TopicCreate):
+    """Add a new topic."""
+    slug = payload.slug.strip().lower().replace(" ", "_")
+    if not slug:
+        from fastapi import HTTPException
+        raise HTTPException(400, "Slug is required")
+    if not payload.label.strip():
+        from fastapi import HTTPException
+        raise HTTPException(400, "Label is required")
+    try:
+        return add_topic(slug=slug, label=payload.label.strip(), keywords=payload.keywords)
+    except ValueError as e:
+        from fastapi import HTTPException
+        raise HTTPException(400, str(e))
+
+
+@router.delete("/topics/{slug}")
+def delete_topic_endpoint(slug: str):
+    """Delete a user-added topic (built-ins are protected)."""
+    try:
+        delete_topic(slug)
+        return {"deleted": slug}
+    except ValueError as e:
+        from fastapi import HTTPException
+        raise HTTPException(400, str(e))
 
 
 # ============================================================
