@@ -15,7 +15,7 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import {
-  LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid,
+  AreaChart, Area, BarChart, Bar, XAxis, YAxis, CartesianGrid,
   Tooltip, ResponsiveContainer, Cell, Legend,
 } from "recharts";
 import {
@@ -25,17 +25,19 @@ import {
 
 // Distinct color per topic — used in line chart and distribution
 const TOPIC_COLORS: Record<string, string> = {
-  monetary_policy:         "#1e40af",  // navy blue
-  financial_stability:     "#16a34a",  // green
-  banking_regulation:      "#7c3aed",  // purple
-  financial_markets:       "#0d9488",  // teal
-  digital_finance:         "#c8a04a",  // gold
-  fintech:                 "#dc2626",  // red
-  artificial_intelligence: "#0891b2",  // cyan
-  payment_systems:         "#9333ea",  // violet
-  cybersecurity:           "#b45309",  // amber
-  climate_finance:         "#15803d",  // dark green
-  financial_inclusion:     "#be185d",  // pink
+  monetary_policy:         "#3b82f6",  // bright blue
+  financial_stability:     "#10b981",  // emerald
+  banking_regulation:      "#a855f7",  // violet
+  financial_markets:       "#06b6d4",  // cyan
+  digital_finance:         "#f59e0b",  // amber
+  fintech:                 "#ef4444",  // red
+  artificial_intelligence: "#8b5cf6",  // purple
+  payment_systems:         "#ec4899",  // pink
+  cybersecurity:           "#f97316",  // orange
+  climate_finance:         "#22c55e",  // green
+  financial_inclusion:     "#14b8a6",  // teal
+  central_bank_digital_currency: "#eab308",  // yellow
+  islamic_finance:         "#84cc16",  // lime
 };
 
 const FALLBACK_COLORS = ["#1e40af", "#7c3aed", "#0d9488", "#c8a04a", "#16a34a", "#dc2626"];
@@ -82,6 +84,18 @@ export default function Trends() {
     cutoff.setMonth(cutoff.getMonth() - cm);
 
     const topSlugs = topics.slice(0, 6).map(t => t.topic);
+
+    // Find the max value per topic (for normalization)
+    const maxByTopic: Record<string, number> = {};
+    topSlugs.forEach(slug => {
+      let max = 0;
+      Object.entries(topicTimeline[slug] || {}).forEach(([m, v]) => {
+        const d = new Date(m + "-01");
+        if (d >= cutoff && v > max) max = v;
+      });
+      maxByTopic[slug] = max || 1;
+    });
+
     topSlugs.forEach(slug => {
       Object.keys(topicTimeline[slug] || {}).forEach(m => {
         const d = new Date(m + "-01");
@@ -97,7 +111,9 @@ export default function Trends() {
         }),
       };
       topSlugs.forEach(slug => {
-        row[slug] = topicTimeline[slug]?.[month] || 0;
+        const raw = topicTimeline[slug]?.[month] || 0;
+        const max = maxByTopic[slug] || 1;
+        row[slug] = Math.round((raw / max) * 100);   // normalized 0-100
       });
       return row;
     });
@@ -179,63 +195,87 @@ export default function Trends() {
               <div className="py-16 text-center text-gray-500 text-sm">No timeline data for this range.</div>
             ) : (
               <ResponsiveContainer width="100%" height={380}>
-                <LineChart data={lineChartData} margin={{ left: 0, right: 24, top: 10, bottom: 8 }}>
+              <AreaChart data={lineChartData} margin={{ left: 0, right: 60, top: 20, bottom: 8 }}>
                   <defs>
                     {lineTopics.map(slug => (
-                      <linearGradient key={slug} id={`grad-${slug}`} x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="0%" stopColor={TOPIC_COLORS[slug] || "#1e40af"} stopOpacity={0.35} />
-                        <stop offset="100%" stopColor={TOPIC_COLORS[slug] || "#1e40af"} stopOpacity={0.02} />
+                      <linearGradient key={slug} id={`area-${slug}`} x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stopColor={TOPIC_COLORS[slug] || "#1e40af"} stopOpacity={0.7} />
+                        <stop offset="100%" stopColor={TOPIC_COLORS[slug] || "#1e40af"} stopOpacity={0.05} />
                       </linearGradient>
                     ))}
+                    <filter id="glow">
+                      <feGaussianBlur stdDeviation="3" result="coloredBlur"/>
+                      <feMerge>
+                        <feMergeNode in="coloredBlur"/>
+                        <feMergeNode in="SourceGraphic"/>
+                      </feMerge>
+                    </filter>
                   </defs>
-                  <CartesianGrid strokeDasharray="4 4" stroke="#eef2f7" vertical={false} />
+                  <CartesianGrid strokeDasharray="0" stroke="rgba(255,255,255,0.06)" vertical={false} />
                   <XAxis
                     dataKey="label"
-                    stroke="#94a3b8"
-                    tick={{ fontSize: 11, fontWeight: 600 }}
-                    axisLine={{ stroke: "#e2e8f0" }}
+                    stroke="#64748b"
+                    tick={{ fontSize: 11, fontWeight: 600, fill: "#94a3b8" }}
+                    axisLine={{ stroke: "rgba(255,255,255,0.1)" }}
                     tickLine={false}
                   />
                   <YAxis
-                    stroke="#94a3b8"
-                    tick={{ fontSize: 11, fontWeight: 600 }}
-                    allowDecimals={false}
+                    stroke="#64748b"
+                    tick={{ fontSize: 11, fontWeight: 600, fill: "#94a3b8" }}
+                    domain={[0, 100]}
+                    ticks={[0, 25, 50, 75, 100]}
+                    tickFormatter={(v) => `${v}%`}
                     axisLine={false}
                     tickLine={false}
                   />
                   <Tooltip
                     contentStyle={{
                       borderRadius: 12,
-                      border: "1px solid #e2e8f0",
+                      border: "1px solid rgba(255,255,255,0.1)",
+                      background: "rgba(15,23,42,0.95)",
+                      color: "#e2e8f0",
                       fontSize: 12.5,
                       fontWeight: 600,
-                      boxShadow: "0 8px 24px rgba(30,58,138,.12)",
+                      boxShadow: "0 8px 24px rgba(0,0,0,.4)",
                       padding: "10px 14px",
                     }}
-                    labelStyle={{ color: "#1e3a8a", fontWeight: 800, marginBottom: 6 }}
+                    labelStyle={{ color: "#f1f5f9", fontWeight: 800, marginBottom: 6 }}
                     itemStyle={{ padding: "2px 0" }}
-                    formatter={(value: number, name: string) => [`${value} pubs`, name.replace(/_/g, " ")]}
+                    formatter={(value: number, name: string) => [`${value}%`, name.replace(/_/g, " ")]}
                   />
                   <Legend
+                    layout="horizontal"
+                    align="center"
+                    verticalAlign="bottom"
                     iconType="circle"
                     iconSize={9}
-                    wrapperStyle={{ fontSize: 11.5, fontWeight: 700, paddingTop: 12 }}
-                    formatter={(value: string) => value.replace(/_/g, " ")}
+                    wrapperStyle={{ fontSize: 11, fontWeight: 700, paddingTop: 20 }}
+                    formatter={(value: string) => {
+                      const label = value.replace(/_/g, " ");
+                      const color = TOPIC_COLORS[value] || "#3b82f6";
+                      return (
+                        <span style={{ color, fontWeight: 800 }}>
+                          {label}
+                        </span>
+                      );
+                    }}
                   />
                   {lineTopics.map(slug => (
-                    <Line
+                    <Area
                       key={slug}
                       type="monotone"
                       dataKey={slug}
                       stroke={TOPIC_COLORS[slug] || "#1e40af"}
-                      strokeWidth={3}
-                      dot={{ r: 0 }}
-                      activeDot={{ r: 6, strokeWidth: 2, stroke: "#fff" }}
+                      strokeWidth={2.5}
+                      fill={`url(#area-${slug})`}
+                      fillOpacity={0.6}
+                      dot={{ r: 3, strokeWidth: 0, fill: TOPIC_COLORS[slug] || "#1e40af" }}
+                      activeDot={{ r: 7, strokeWidth: 2, stroke: "#fff", filter: "url(#glow)" }}
                       name={slug}
                       animationDuration={800}
                     />
                   ))}
-                </LineChart>
+                </AreaChart>
               </ResponsiveContainer>
             )}
           </CardContent>

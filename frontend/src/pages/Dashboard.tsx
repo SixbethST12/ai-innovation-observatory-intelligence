@@ -11,7 +11,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   PieChart, Pie, Cell, ResponsiveContainer, Tooltip,
-  BarChart, Bar, XAxis, YAxis, CartesianGrid,
+  BarChart, Bar, LineChart, Line, AreaChart, Area, XAxis, YAxis, CartesianGrid,
 } from "recharts";
 import {
   getStats, getTrends, getInstitutions, getInstitutionsFull, getEmerging,
@@ -382,28 +382,60 @@ export default function Dashboard() {
         </CardHeader>
         <CardContent className="pt-6">
           <ResponsiveContainer width="100%" height={280}>
-            <BarChart data={recentTimeline} margin={{ left: 0, right: 20, top: 5, bottom: 5 }}>
+<AreaChart data={recentTimeline} margin={{ left: 0, right: 30, top: 10, bottom: 5 }}>
               <defs>
-                <linearGradient id="timelineGradient" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor="#c8a04a" stopOpacity={1} />
-                  <stop offset="100%" stopColor="#e8ce7a" stopOpacity={0.7} />
+                <linearGradient id="timelineArea" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor="#c8a04a" stopOpacity={0.5} />
+                  <stop offset="60%" stopColor="#c8a04a" stopOpacity={0.15} />
+                  <stop offset="100%" stopColor="#c8a04a" stopOpacity={0.01} />
                 </linearGradient>
+                <filter id="timelineGlow">
+                  <feGaussianBlur stdDeviation="3" result="coloredBlur"/>
+                  <feMerge>
+                    <feMergeNode in="coloredBlur"/>
+                    <feMergeNode in="SourceGraphic"/>
+                  </feMerge>
+                </filter>
               </defs>
-              <CartesianGrid strokeDasharray="3 3" stroke="#eef2f7" vertical={false} />
-              <XAxis dataKey="label" stroke="#94a3b8" tick={{ fontSize: 11, fontWeight: 600 }} />
-              <YAxis stroke="#94a3b8" tick={{ fontSize: 11, fontWeight: 600 }} allowDecimals={false} />
+              <CartesianGrid strokeDasharray="4 4" stroke="#eef2f7" vertical={false} />
+              <XAxis
+                dataKey="label"
+                stroke="#94a3b8"
+                tick={{ fontSize: 11, fontWeight: 600 }}
+                axisLine={{ stroke: "#e2e8f0" }}
+                tickLine={false}
+              />
+              <YAxis
+                stroke="#94a3b8"
+                tick={{ fontSize: 11, fontWeight: 600 }}
+                allowDecimals={false}
+                axisLine={false}
+                tickLine={false}
+              />
               <Tooltip
                 contentStyle={{
-                  borderRadius: 10,
+                  borderRadius: 12,
                   border: "1px solid #e2e8f0",
-                  fontSize: 12,
+                  fontSize: 12.5,
                   fontWeight: 600,
-                  boxShadow: "0 4px 12px rgba(30,58,138,.1)",
+                  boxShadow: "0 8px 24px rgba(30,58,138,.12)",
+                  padding: "10px 14px",
                 }}
-                cursor={{ fill: "rgba(200,160,74,.08)" }}
+                labelStyle={{ color: "#1e3a8a", fontWeight: 800, marginBottom: 4 }}
+                formatter={(value: number) => [`${value} publications`, "Count"]}
               />
-              <Bar dataKey="count" fill="url(#timelineGradient)" radius={[8, 8, 0, 0]} barSize={32} />
-            </BarChart>
+              <Area
+                type="linear"
+                dataKey="count"
+                stroke="#c8a04a"
+                strokeWidth={2.5}
+                fill="url(#timelineArea)"
+                fillOpacity={1}
+                dot={{ r: 3, fill: "#fff", stroke: "#c8a04a", strokeWidth: 2 }}
+                activeDot={{ r: 7, fill: "#c8a04a", stroke: "#fff", strokeWidth: 3, filter: "url(#timelineGlow)" }}
+                animationDuration={900}
+              />
+            </AreaChart>
           </ResponsiveContainer>
         </CardContent>
       </Card>
