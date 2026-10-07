@@ -1,0 +1,1450 @@
+<!DOCTYPE html><html><head><meta charset="utf-8"><title>System Report</title><style>body{font-family:sans-serif;max-width:900px;margin:40px auto;padding:20px;line-height:1.6;color:#1c2b45;}h1,h2{color:#1e3a8a;border-bottom:2px solid #c8a04a;padding-bottom:6px;}h3{color:#1e3a8a;}pre{background:#f1f5f9;padding:12px;border-radius:8px;overflow-x:auto;font-size:12px;}code{background:#f1f5f9;padding:2px 5px;border-radius:4px;}table{border-collapse:collapse;width:100%;margin:12px 0;}th{background:#1e3a8a;color:white;padding:8px;text-align:left;}td{padding:6px 8px;border-bottom:1px solid #e2e8f0;}tr:nth-child(even) td{background:#f8fafc;}</style></head><body><h1>AI INNOVATION OBSERVATORY</h1>
+<h2>System Report</h2>
+<hr />
+<h1>AI INNOVATION OBSERVATORY</h1>
+<h3>for Central Banking &amp; Financial Sector Intelligence</h3>
+<p><strong>System Report</strong></p>
+<p><strong>Prepared for:</strong> Bank of Tanzania
+<strong>Prepared by:</strong> Student Project
+<strong>Repository:</strong> github.com/SixbethST12/ai-innovation-observatory-intelligence
+<strong>Date:</strong> 6 October 2026
+<strong>Version:</strong> 1.0</p>
+<hr />
+<h2>Abstract</h2>
+<p>The AI Innovation Observatory is a web-based intelligence platform that
+automatically monitors trusted central banking and financial-sector sources
+— BIS, IMF, World Bank, and peer central banks — and turns new publications
+into structured, searchable intelligence. The system uses a locally hosted
+Large Language Model (Ollama + qwen2.5:3b) to generate six-section summaries,
+classify publications into 11 canonical central-banking topics, produce
+relevance notes for the Bank of Tanzania, and detect emerging trends. Every
+AI-generated output is clearly labeled as such and remains traceable to its
+original source URL.</p>
+<p>The platform addresses a real analyst pain point: monitoring dozens of
+institutional publications across many websites is slow, leads to delayed
+awareness, and duplicates research effort. The Observatory automates
+collection, extracts structured intelligence via AI, and presents it through
+an analyst dashboard, a search interface, a trend analytics view, and an
+admin control panel.</p>
+<p>The prototype has been fully implemented, tested end-to-end (10/10 functional
+checks passed), and documented. It processes 210+ publications from six
+sources, classifies them into 12 topics, generates AI summaries and relevance
+notes, and detects emerging trends. The system is built on Python (FastAPI),
+React 19, SQLite, and Ollama, and is deployed via Docker Compose.</p>
+<p><strong>Keywords:</strong> central banking intelligence, LLM, summarization, text
+classification, trend detection, FastAPI, React, Ollama, information retrieval.</p>
+<hr />
+<h2>Table of Contents</h2>
+<ol>
+<li>Introduction</li>
+<li>Problem Statement</li>
+<li>Objectives</li>
+<li>Literature &amp; Background</li>
+<li>System Analysis</li>
+<li>System Design</li>
+<li>Implementation</li>
+<li>Testing &amp; Results</li>
+<li>Deployment</li>
+<li>Limitations</li>
+<li>Conclusion &amp; Recommendations</li>
+<li>References</li>
+<li>Appendices</li>
+</ol>
+<hr />
+<h2>1. Introduction</h2>
+<h3>1.1 Background</h3>
+<p>Central banks and financial institutions continuously publish research, policy
+papers, regulatory developments, and technological updates. These publications
+influence monetary policy, financial stability, supervision, digital finance,
+and many other areas of central banking.</p>
+<p>Monitoring these developments across multiple international and
+peer-institution sources — the Bank for International Settlements (BIS), the
+International Monetary Fund (IMF), the World Bank, and peer central banks —
+is time-consuming for analysts and researchers.</p>
+<h3>1.2 Motivation</h3>
+<p>The Bank of Tanzania (BOT) — like any modern central bank — must remain aware
+of international developments. Without automation, this awareness depends on
+individual analysts manually checking dozens of websites, leading to:</p>
+<ul>
+<li>Delayed awareness of emerging developments</li>
+<li>Duplicated research effort across teams</li>
+<li>Difficulty maintaining an up-to-date view of international trends</li>
+<li>Inconsistent coverage across topics</li>
+</ul>
+<h3>1.3 Purpose</h3>
+<p>This project delivers a practical AI-assisted observatory that automatically
+monitors approved sources and presents relevant developments in a structured,
+accessible, traceable form.</p>
+<h3>1.4 Scope</h3>
+<p>In scope: automated collection, AI summarization, topic classification,
+emerging-trend detection, relevance assessment, search, dashboard, alerts.</p>
+<p>Out of scope: policy recommendations, market prediction, real-time data,
+non-public sources.</p>
+<hr />
+<h2>2. Problem Statement</h2>
+<h3>2.1 Current Challenges</h3>
+<table>
+<thead>
+<tr>
+<th>Challenge</th>
+<th>Impact</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Multiple sources to monitor</td>
+<td>Time-consuming</td>
+</tr>
+<tr>
+<td>Different publication formats</td>
+<td>Hard to unify</td>
+</tr>
+<tr>
+<td>No central search</td>
+<td>Duplicated effort</td>
+</tr>
+<tr>
+<td>Volume of publications</td>
+<td>Easy to miss important items</td>
+</tr>
+<tr>
+<td>No structured topic view</td>
+<td>Hard to spot trends</td>
+</tr>
+</tbody>
+</table>
+<h3>2.2 Opportunity</h3>
+<p>A well-designed AI-assisted observatory can automatically collect publications
+from approved sources, summarize and classify them using a locally hosted LLM,
+surface emerging trends, provide a unified searchable interface, and preserve
+traceability to the original source.</p>
+<h3>2.3 Problem Definition</h3>
+<blockquote>
+<p>How can the Bank of Tanzania continuously and systematically monitor central
+banking publications from international and peer institutions in a way that
+is automated, structured, searchable, trend-aware, and traceable to original
+sources?</p>
+</blockquote>
+<hr />
+<h2>3. Objectives</h2>
+<h3>3.1 General Objective</h3>
+<p>To develop a prototype AI intelligence platform that continuously monitors
+approved central banking and financial-sector sources and transforms new
+publications into structured intelligence for analysts.</p>
+<h3>3.2 Specific Objectives</h3>
+<ol>
+<li>Automatically collect publications from approved sources (BIS, IMF, World
+   Bank, peer central banks)</li>
+<li>Store publication metadata with full source traceability</li>
+<li>Generate concise six-section summaries using AI</li>
+<li>Classify publications into central-banking topic categories</li>
+<li>Detect recurring and emerging trends</li>
+<li>Assess potential relevance to the Bank of Tanzania</li>
+<li>Provide keyword-based search over the collected corpus</li>
+<li>Present everything through a clear dashboard and visualization layer</li>
+</ol>
+<hr />
+<h2>4. Literature &amp; Background</h2>
+<h3>4.1 Central Bank Intelligence</h3>
+<p>Central banks routinely monitor research from BIS, IMF, World Bank, peer
+central banks (Federal Reserve, ECB, BoE), and standard-setting bodies
+(BCBS, CPMI, IOSCO). Manual monitoring across these sources is standard
+practice but inefficient.</p>
+<h3>4.2 AI in Financial Analysis</h3>
+<p>Modern LLMs have shown strong performance in document summarization, text
+classification, semantic search, and zero-shot labeling. Small local models
+(like qwen2.5:3b) offer a practical balance of capability and cost for
+prototype and low-resource deployments.</p>
+<h3>4.3 Existing Solutions</h3>
+<table>
+<thead>
+<tr>
+<th>Solution Type</th>
+<th>Examples</th>
+<th>Limitation</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>RSS readers</td>
+<td>Feedly, Inoreader</td>
+<td>No AI analysis</td>
+</tr>
+<tr>
+<td>Media monitors</td>
+<td>Meltwater, Brandwatch</td>
+<td>Expensive, not BOT-focused</td>
+</tr>
+<tr>
+<td>Institutional portals</td>
+<td>BIS website, IMF eLibrary</td>
+<td>Single-source</td>
+</tr>
+<tr>
+<td>Academic tools</td>
+<td>Elicit, Consensus</td>
+<td>Not financial-sector specific</td>
+</tr>
+</tbody>
+</table>
+<h3>4.4 Gap Identified</h3>
+<p>No low-cost, BOT-focused, AI-assisted observatory currently exists that
+aggregates multiple trusted central-banking sources, uses a local LLM for
+privacy, produces traceable labeled AI output, and includes trend detection
+and dashboards. The AI Innovation Observatory fills this gap.</p>
+<hr />
+<h2>5. System Analysis</h2>
+<h3>5.1 Functional Requirements</h3>
+<table>
+<thead>
+<tr>
+<th>ID</th>
+<th>Requirement</th>
+<th>Priority</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>FR-1</td>
+<td>Monitor trusted sources via RSS/API/HTML</td>
+<td>High</td>
+</tr>
+<tr>
+<td>FR-2</td>
+<td>Store publication metadata + abstract</td>
+<td>High</td>
+</tr>
+<tr>
+<td>FR-3</td>
+<td>Deduplicate across runs</td>
+<td>High</td>
+</tr>
+<tr>
+<td>FR-4</td>
+<td>Generate 6-section AI summaries</td>
+<td>High</td>
+</tr>
+<tr>
+<td>FR-5</td>
+<td>Classify into configurable topics</td>
+<td>High</td>
+</tr>
+<tr>
+<td>FR-6</td>
+<td>Detect and visualize trends</td>
+<td>High</td>
+</tr>
+<tr>
+<td>FR-7</td>
+<td>Produce AI relevance notes for BOT</td>
+<td>High</td>
+</tr>
+<tr>
+<td>FR-8</td>
+<td>Provide analyst dashboard</td>
+<td>High</td>
+</tr>
+<tr>
+<td>FR-9</td>
+<td>Keyword-based search</td>
+<td>High</td>
+</tr>
+<tr>
+<td>FR-10</td>
+<td>Alert rules for user-defined watch terms</td>
+<td>Medium</td>
+</tr>
+<tr>
+<td>FR-11</td>
+<td>Dynamic source management (admin)</td>
+<td>Medium</td>
+</tr>
+<tr>
+<td>FR-12</td>
+<td>Dynamic topic management (admin)</td>
+<td>Medium</td>
+</tr>
+<tr>
+<td>FR-13</td>
+<td>Manual publication entry (admin)</td>
+<td>Low</td>
+</tr>
+<tr>
+<td>FR-14</td>
+<td>Bulk hide / re-run AI (admin)</td>
+<td>Medium</td>
+</tr>
+</tbody>
+</table>
+<h3>5.2 Non-Functional Requirements</h3>
+<table>
+<thead>
+<tr>
+<th>Category</th>
+<th>Requirement</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Traceability</td>
+<td>Every AI insight links to its source URL</td>
+</tr>
+<tr>
+<td>Transparency</td>
+<td>Every AI output labeled as AI-generated</td>
+</tr>
+<tr>
+<td>Privacy</td>
+<td>LLM runs locally — no external API calls</td>
+</tr>
+<tr>
+<td>Modularity</td>
+<td>New sources addable without code changes</td>
+</tr>
+<tr>
+<td>Reproducibility</td>
+<td>Docker-based deployment</td>
+</tr>
+<tr>
+<td>Performance</td>
+<td>Dashboard loads in &lt; 3 seconds (excluding slow AI calls)</td>
+</tr>
+<tr>
+<td>Availability</td>
+<td>Error isolation — one source failure doesn't affect others</td>
+</tr>
+<tr>
+<td>Security</td>
+<td>Two-role access (Analyst / Admin)</td>
+</tr>
+</tbody>
+</table>
+<h3>5.3 Constraints</h3>
+<ul>
+<li>Free / open-source tooling only</li>
+<li>Student project timeline</li>
+<li>CPU-only inference (no GPU available)</li>
+<li>Public, approved sources only</li>
+<li>No external LLM API (data must remain local)</li>
+</ul>
+<h3>5.4 Stakeholders</h3>
+<table>
+<thead>
+<tr>
+<th>Stakeholder</th>
+<th>Role</th>
+<th>Interest</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>BOT Analysts</td>
+<td>Primary users</td>
+<td>Monitor developments, research</td>
+</tr>
+<tr>
+<td>BOT Researchers</td>
+<td>Primary users</td>
+<td>Deep topic research</td>
+</tr>
+<tr>
+<td>BOT Management</td>
+<td>Secondary</td>
+<td>Strategic awareness</td>
+</tr>
+<tr>
+<td>System Administrator</td>
+<td>Operator</td>
+<td>System health, sources, users</td>
+</tr>
+<tr>
+<td>Students</td>
+<td>Developers</td>
+<td>Learn AI/LLM/NLP stack</td>
+</tr>
+</tbody>
+</table>
+<h3>5.5 Use Case Overview</h3>
+<pre><code>External Sources (BIS, IMF, WB, CBK)
+          |
+          v  fetch
+Data Collection (Collectors)
+          |
+          v  normalize + dedup
+Data Layer (DB)
+          |
+          +------+------+
+          |      |      |
+          v      v      v
+     AI Pipeline  Rule  Trends
+     summarize    Matcher Engine
+     classify
+     relevance
+          |      |      |
+          +------+------+
+                 v
+          API Layer (FastAPI)
+                 v
+          Dashboard (React)
+</code></pre>
+<hr />
+<h2>6. System Design</h2>
+<h3>6.1 Architecture Overview</h3>
+<p>The system is organized into seven layers.</p>
+<table>
+<thead>
+<tr>
+<th>#</th>
+<th>Layer</th>
+<th>Technology</th>
+<th>Responsibility</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td>External Sources</td>
+<td>BIS, IMF, WB, CBK, custom RSS</td>
+<td>Data origin</td>
+</tr>
+<tr>
+<td>2</td>
+<td>Data Collection</td>
+<td>Python + feedparser + requests</td>
+<td>Fetch + normalize</td>
+</tr>
+<tr>
+<td>3</td>
+<td>Data Layer</td>
+<td>SQLite + SQLAlchemy</td>
+<td>Persist + dedup</td>
+</tr>
+<tr>
+<td>4</td>
+<td>AI &amp; Intelligence</td>
+<td>Ollama + qwen2.5:3b</td>
+<td>Summarize / classify / relevance / trends</td>
+</tr>
+<tr>
+<td>5</td>
+<td>API Layer</td>
+<td>FastAPI</td>
+<td>REST endpoints</td>
+</tr>
+<tr>
+<td>6</td>
+<td>Presentation</td>
+<td>React 19 + Vite + Tailwind + shadcn/ui</td>
+<td>Analyst + Admin UI</td>
+</tr>
+<tr>
+<td>7</td>
+<td>Users</td>
+<td>Analysts, Admins</td>
+<td>Consumers</td>
+</tr>
+</tbody>
+</table>
+<pre><code>+----------------------------------------------+
+|                  USERS                        |
+|    Analysts  .  Researchers  .  Admins        |
++-----------------------+----------------------+
+                        | browser
+                        v
++----------------------------------------------+
+|            PRESENTATION LAYER                 |
+|  React 19 + Vite + Tailwind + shadcn/ui       |
+|  Dashboard . Publications . Trends . Search   |
+|  Knowledge Base . Alerts . Admin Pages        |
++-----------------------+----------------------+
+                        | /api/*
+                        v
++----------------------------------------------+
+|               API LAYER                       |
+|                FastAPI                        |
+|  /stats /publications /search /trends         |
+|  /admin/* (sources, topics, users, rules)     |
++-----------------------+----------------------+
+                        | SQLAlchemy
+                        v
++----------------------------------------------+
+|         AI &amp; INTELLIGENCE LAYER               |
+|  Summarize . Classify . Relevance . Trends    |
+|         (Ollama + qwen2.5:3b, local)          |
++-----------------------+----------------------+
+                        |
+                        v
++----------------------------------------------+
+|               DATA LAYER                      |
+|                SQLite                         |
+|  publications . sources . topics .            |
+|  alert_rules . rule_matches                   |
++-----------------------+----------------------+
+                        | writes
+                        v
++----------------------------------------------+
+|          DATA COLLECTION LAYER                |
+|  Scheduler . BIS . IMF . World Bank . CBK     |
+|  Generic RSS . Dedup . Source validation      |
++-----------------------+----------------------+
+                        | HTTP
+                        v
++----------------------------------------------+
+|         EXTERNAL TRUSTED SOURCES              |
+|  BIS . IMF . World Bank . CBK . Custom RSS    |
++----------------------------------------------+
+</code></pre>
+<h3>6.2 Data Collection Design</h3>
+<p>Built-in collectors:</p>
+<table>
+<thead>
+<tr>
+<th>Source</th>
+<th>Method</th>
+<th>Approx. output</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>BIS</td>
+<td>3 RSS feeds</td>
+<td>60-75 pubs</td>
+<td>Merged + deduped</td>
+</tr>
+<tr>
+<td>IMF</td>
+<td>HTML relay</td>
+<td>10-15 pubs</td>
+<td>IMF blocks direct RSS</td>
+</tr>
+<tr>
+<td>World Bank</td>
+<td>REST API v3</td>
+<td>50-60 pubs</td>
+<td>One query per topic</td>
+</tr>
+<tr>
+<td>CBK</td>
+<td>WordPress RSS</td>
+<td>10 pubs</td>
+<td>Peer central bank</td>
+</tr>
+</tbody>
+</table>
+<p>Dynamic sources: any RSS 2.0 / Atom feed added via the admin UI.
+Error isolation: each collector wraps fetch() in safe_fetch().</p>
+<h3>6.3 Data Model</h3>
+<p>Entity Relationship Diagram:</p>
+<pre><code>+----------------------+      +----------------------+
+|       TOPICS         |      |    ALERT_RULES       |
++----------------------+      +----------------------+
+| id (PK)              |      | id (PK)              |
+| slug (UNIQUE)        |      | keyword              |
+| label                |      | source               |
+| keywords (CSV)       |      | topic                |
+| active               |      | priority             |
+| is_builtin           |      | created_by           |
+| created_at           |      | created_at           |
++----------------------+      | active               |
+                              +----------+-----------+
+                                         |
+                                         | 1:N
+                                         v
++----------------------+      +----------------------+
+|      SOURCES         |      |   RULE_MATCHES       |
++----------------------+      +----------------------+
+| id (PK)              |      | id (PK)              |
+| name (UNIQUE)        |      | rule_id (FK)         |
+| url                  |      | publication_id (FK)  |
+| method               |      | matched_at           |
+| active               |      +----------+-----------+
+| is_builtin           |                 |
+| added_by             |                 | N:1
+| added_at             |                 |
++----------+-----------+                 |
+           |                             |
+           | produces                    |
+           v                             v
++---------------------------------------------------+
+|               PUBLICATIONS                         |
++---------------------------------------------------+
+| id (PK)                                            |
+| title . institution . source_url . published_date  |
+| document_type . abstract . raw_content             |
+| fingerprint (UNIQUE) &lt;-- SHA-256 dedup key         |
+| ai_summary . ai_topics . ai_relevance              |
+| ai_processed . ai_processed_at . ai_engine         |
+| hidden . manual . collected_at                     |
++---------------------------------------------------+
+</code></pre>
+<h3>6.4 AI Layer Design</h3>
+<p>Model: qwen2.5:3b (Q4_K_M, ~1.9 GB) via Ollama, running locally.</p>
+<p>Three AI tasks:</p>
+<table>
+<thead>
+<tr>
+<th>Task</th>
+<th>Input</th>
+<th>Output</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Summarize</td>
+<td>title + abstract (&lt;=800 chars)</td>
+<td>6-section summary</td>
+</tr>
+<tr>
+<td>Classify</td>
+<td>title + abstract</td>
+<td>1-3 topic slugs</td>
+</tr>
+<tr>
+<td>Relevance</td>
+<td>title + abstract</td>
+<td>2-3 sentence BOT note + disclaimer</td>
+</tr>
+</tbody>
+</table>
+<p>Fallback design:</p>
+<pre><code>                ask(prompt, task)
+                       |
+                       v
+              +----------------+
+              |  _ollama_ask() |
+              +-------+--------+
+                      |
+            +---------+---------+
+            |                   |
+         success              failure
+            |                   |
+            v                   v
+    return (text,         return (fallback_text,
+            "ollama")              "rule-based")
+</code></pre>
+<p>Four-level classification fallback chain:</p>
+<ol>
+<li>LLM output validated against DB topics</li>
+<li>Keyword matcher against topic keywords</li>
+<li>Governance-words default (speech / summit / etc.)</li>
+<li>Institution default (BIS -&gt; monetary_policy, etc.)</li>
+</ol>
+<p>Caching: Glance narrative + Trend insights cached for 10 minutes.</p>
+<h3>6.5 API Layer Design</h3>
+<table>
+<thead>
+<tr>
+<th>Router</th>
+<th>Endpoints</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>publications</td>
+<td>2</td>
+<td>List + detail</td>
+</tr>
+<tr>
+<td>search</td>
+<td>1</td>
+<td>Keyword search</td>
+</tr>
+<tr>
+<td>trends</td>
+<td>6</td>
+<td>Frequencies, emerging, timeline, institutions, insights, glance</td>
+</tr>
+<tr>
+<td>stats</td>
+<td>2</td>
+<td>Summary + timeline</td>
+</tr>
+<tr>
+<td>admin</td>
+<td>20+</td>
+<td>Sources, publications, topics, users, rules, alerts, activity, scheduler</td>
+</tr>
+</tbody>
+</table>
+<p>Full OpenAPI docs at /docs.</p>
+<h3>6.6 Presentation Layer Design</h3>
+<p>Analyst pages (8): Login, Dashboard, Publications, Trends, Topic
+Classification, Search, Knowledge Base, Alerts.</p>
+<p>Admin pages (6): Admin Panel, Manage Sources, Manage Publications,
+Manage Topics, Manage Users, Alerts.</p>
+<h3>6.7 Data Flow - Publication Pipeline</h3>
+<pre><code>[1] Scheduler triggers collection run
+        |
+        v
+[2] Each collector fetches from source
+        |
+        v
+[3] Normalize into Publication objects
+        |
+        v
+[4] Duplicate check (fingerprint)
+        |
+        +-- exists -&gt; skip
+        |
+        v
+[5] Store row (metadata + abstract)
+        |
+        v
+[6] Rule matcher scans new IDs against alert_rules
+        |
+        v
+[7] AI pipeline processes pending rows
+        |
+        +-- Summarize
+        +-- Classify
+        +-- Relevance
+        |
+        v
+[8] Update DB with AI output
+        |
+        v
+[9] Available via API
+        |
+        v
+[10] Surfaced on dashboard, search, trends
+</code></pre>
+<hr />
+<h2>7. Implementation</h2>
+<h3>7.1 Technology Stack</h3>
+<table>
+<thead>
+<tr>
+<th>Layer</th>
+<th>Technology</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Language (backend)</td>
+<td>Python 3.12</td>
+</tr>
+<tr>
+<td>Language (frontend)</td>
+<td>TypeScript</td>
+</tr>
+<tr>
+<td>Web framework</td>
+<td>FastAPI</td>
+</tr>
+<tr>
+<td>ORM</td>
+<td>SQLAlchemy 2.0</td>
+</tr>
+<tr>
+<td>Database</td>
+<td>SQLite 3</td>
+</tr>
+<tr>
+<td>LLM</td>
+<td>Ollama + qwen2.5:3b</td>
+</tr>
+<tr>
+<td>Data collection</td>
+<td>feedparser, requests, BeautifulSoup</td>
+</tr>
+<tr>
+<td>Frontend</td>
+<td>React 19 + Vite 8</td>
+</tr>
+<tr>
+<td>Styling</td>
+<td>Tailwind CSS 4</td>
+</tr>
+<tr>
+<td>UI components</td>
+<td>shadcn/ui</td>
+</tr>
+<tr>
+<td>Charts</td>
+<td>Recharts</td>
+</tr>
+<tr>
+<td>Container</td>
+<td>Docker Compose</td>
+</tr>
+<tr>
+<td>Version control</td>
+<td>Git + GitHub</td>
+</tr>
+</tbody>
+</table>
+<h3>7.2 Repository Structure</h3>
+<pre><code>ai-innovation-observatory-intelligence/
+  backend/
+    app/
+      ai/
+        llm.py             LLM client + fallback
+        prompts.py         Prompt templates
+        summarize.py       6-section summary
+        classify.py        Topic classification
+        relevance.py       BOT relevance note
+        trends.py          Trend analysis
+        pipeline.py        Runs all 3 on pending
+      collectors/
+        bis.py
+        imf.py
+        worldbank.py
+        cbk.py
+        generic_rss.py
+        scheduler.py
+      jobs/                Background job manager
+      routers/             API endpoints
+      models.py            ORM models
+      storage.py           Persist + rule match hook
+      topic_store.py       DB-backed topics
+      alerts.py            System alerts
+      activity.py          Activity feed
+      cache.py             TTL cache
+      users.py             In-memory users
+      database.py          SQLAlchemy setup
+      config.py            Settings
+      main.py              FastAPI app
+    requirements.txt
+  frontend/
+    src/
+      components/ui/       shadcn primitives
+      lib/api.ts           HTTP client
+      pages/               8 analyst pages
+      pages/admin/         6 admin pages
+  docs/
+    SYSTEM_REPORT.md       this document
+    SOURCES.md
+    AI_LIMITATIONS.md
+    USER_GUIDE.md
+    TEST_REPORT.md
+    architecture.pdf
+    database_design.pdf
+  docker-compose.yml
+  backend/Dockerfile
+  frontend/Dockerfile
+  README.md
+  LICENSE
+</code></pre>
+<h3>7.3 Data Collection Implementation</h3>
+<ul>
+<li>BIS collector: merges 3 RSS feeds, dedupes by fingerprint</li>
+<li>IMF collector: parses HTML relay with BeautifulSoup</li>
+<li>World Bank collector: REST API, one query per topic</li>
+<li>CBK collector: WordPress RSS with full content</li>
+<li>Generic RSS: universal collector for user-added sources</li>
+</ul>
+<p>Scheduler orchestration pseudo-code:</p>
+<pre><code>def run_all():
+    all_pubs = []
+    for collector in BUILTIN_COLLECTORS:
+        all_pubs.extend(collector.safe_fetch())
+    for collector in _load_user_sources():
+        all_pubs.extend(collector.safe_fetch())
+    return all_pubs
+</code></pre>
+<h3>7.4 AI Pipeline Implementation</h3>
+<p>For each pending publication:</p>
+<ol>
+<li>Pick best text (abstract -&gt; raw_content -&gt; title)</li>
+<li>Call summarize(title, text) -&gt; 6-section summary</li>
+<li>Call classify(title, text, institution) -&gt; 1-3 topics</li>
+<li>Call relevance(title, text) -&gt; BOT note + disclaimer</li>
+<li>Save all outputs + engine + timestamp</li>
+<li>Mark ai_processed = True</li>
+</ol>
+<p>Error isolation: if one pub fails, log and continue.
+Idempotent: only processes ai_processed = False.</p>
+<h3>7.5 API Implementation</h3>
+<p>25+ endpoints across 5 routers. All return JSON.
+Uses Pydantic for request/response schemas.
+CORS enabled for local development.</p>
+<h3>7.6 Frontend Implementation</h3>
+<ul>
+<li>Navigation: App.tsx holds page state; no router</li>
+<li>Data fetching: all calls go through lib/api.ts</li>
+<li>Styling: Tailwind + custom BoT theme CSS variables</li>
+<li>Charts: Recharts with custom gradient fills and color palettes</li>
+<li>Drawers: shadcn/ui Sheet for detail views</li>
+</ul>
+<h3>7.7 Key Implementation Decisions</h3>
+<table>
+<thead>
+<tr>
+<th>Decision</th>
+<th>Rationale</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Local LLM (Ollama)</td>
+<td>Zero cost, private, matches brief</td>
+</tr>
+<tr>
+<td>SQLite</td>
+<td>Simple, portable, sufficient for prototype</td>
+</tr>
+<tr>
+<td>Fingerprint UNIQUE</td>
+<td>DB-level dedup enforcement</td>
+</tr>
+<tr>
+<td>Hidden instead of delete</td>
+<td>Non-destructive, preserves data</td>
+</tr>
+<tr>
+<td>DB-backed topics</td>
+<td>Admins can extend without code changes</td>
+</tr>
+<tr>
+<td>Docker Compose</td>
+<td>Reproducible deployment</td>
+</tr>
+<tr>
+<td>Rule-based fallback</td>
+<td>Pipeline never stalls</td>
+</tr>
+<tr>
+<td>Timeout 240s</td>
+<td>Fits CPU inference</td>
+</tr>
+<tr>
+<td>OLLAMA_KEEP_ALIVE=1h</td>
+<td>Prevents cold-start delays</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2>8. Testing &amp; Results</h2>
+<h3>8.1 Test Approach</h3>
+<p>End-to-end functional testing across 10 categories: services, data integrity,
+API availability, CRUD, AI classification, AI summarization, AI relevance,
+rule matching, frontend rendering, final state.</p>
+<h3>8.2 Test Environment</h3>
+<table>
+<thead>
+<tr>
+<th>Component</th>
+<th>State</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Backend</td>
+<td>FastAPI in Docker on port 8000</td>
+</tr>
+<tr>
+<td>Frontend</td>
+<td>React 19 + Vite on port 5173</td>
+</tr>
+<tr>
+<td>LLM</td>
+<td>Ollama + qwen2.5:3b (host, local)</td>
+</tr>
+<tr>
+<td>Database</td>
+<td>SQLite with 210 publications</td>
+</tr>
+<tr>
+<td>OS</td>
+<td>Parrot OS</td>
+</tr>
+</tbody>
+</table>
+<h3>8.3 Test Results</h3>
+<table>
+<thead>
+<tr>
+<th>#</th>
+<th>Test</th>
+<th>Result</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td>All services reachable</td>
+<td>PASS</td>
+</tr>
+<tr>
+<td>2</td>
+<td>Data integrity (210 pubs, 0 fallbacks)</td>
+<td>PASS</td>
+</tr>
+<tr>
+<td>3</td>
+<td>15 API endpoints return 200</td>
+<td>PASS</td>
+</tr>
+<tr>
+<td>4</td>
+<td>CRUD operations (topics, rules)</td>
+<td>PASS</td>
+</tr>
+<tr>
+<td>5</td>
+<td>AI classification (CBDC -&gt; payment_systems)</td>
+<td>PASS</td>
+</tr>
+<tr>
+<td>6</td>
+<td>AI summarization (6 sections, ollama)</td>
+<td>PASS</td>
+</tr>
+<tr>
+<td>7</td>
+<td>AI relevance (disclaimer present)</td>
+<td>PASS</td>
+</tr>
+<tr>
+<td>8</td>
+<td>Rule matching (229 matches)</td>
+<td>PASS</td>
+</tr>
+<tr>
+<td>9</td>
+<td>All frontend pages render</td>
+<td>PASS</td>
+</tr>
+<tr>
+<td>10</td>
+<td>Final state verification</td>
+<td>PASS</td>
+</tr>
+</tbody>
+</table>
+<p>10 / 10 tests passed. Full details in docs/TEST_REPORT.md.</p>
+<h3>8.4 AI Accuracy</h3>
+<table>
+<thead>
+<tr>
+<th>Task</th>
+<th>Observed</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Topic classification (top-1)</td>
+<td>~65-75% (informal)</td>
+</tr>
+<tr>
+<td>Topic classification (top-3)</td>
+<td>higher, includes correct slug</td>
+</tr>
+<tr>
+<td>Summaries</td>
+<td>Accurate on well-written abstracts</td>
+</tr>
+<tr>
+<td>Relevance notes</td>
+<td>On-topic, always with disclaimer</td>
+</tr>
+<tr>
+<td>Trend detection</td>
+<td>Deterministic (DB-computed, reliable)</td>
+</tr>
+</tbody>
+</table>
+<h3>8.5 Known Issues</h3>
+<table>
+<thead>
+<tr>
+<th>Issue</th>
+<th>Severity</th>
+<th>Status</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Ollama cold start ~60s</td>
+<td>Low</td>
+<td>Mitigated via keep-alive</td>
+</tr>
+<tr>
+<td>IMF uses third-party relay</td>
+<td>Medium</td>
+<td>Documented</td>
+</tr>
+<tr>
+<td>SQLite concurrency</td>
+<td>Low</td>
+<td>Fine for prototype</td>
+</tr>
+<tr>
+<td>In-memory user store</td>
+<td>Medium</td>
+<td>Documented</td>
+</tr>
+<tr>
+<td>Classification accuracy</td>
+<td>Medium</td>
+<td>Documented in AI_LIMITATIONS</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2>9. Deployment</h2>
+<h3>9.1 Prerequisites</h3>
+<ul>
+<li>Docker + Docker Compose</li>
+<li>Ollama installed on host</li>
+<li>Model pulled: ollama pull qwen2.5:3b</li>
+<li>~4 GB free RAM</li>
+</ul>
+<h3>9.2 Deployment Steps</h3>
+<pre><code>git clone https://github.com/SixbethST12/ai-innovation-observatory-intelligence.git
+cd ai-innovation-observatory-intelligence
+docker compose up -d
+docker compose ps
+</code></pre>
+<p>Access at http://localhost:5173.</p>
+<h3>9.3 First-Time Initialization</h3>
+<pre><code># 1. Create DB tables
+docker exec -it observatory-backend python -c "from app.database import init_db; init_db()"
+
+# 2. Collect publications
+docker exec -it observatory-backend python -c "from app.collectors.scheduler import run_all; from app.storage import save_publications; save_publications(run_all())"
+
+# 3. Run AI pipeline (30-60 min on CPU)
+docker exec -itd observatory-backend python -m app.ai.pipeline
+</code></pre>
+<h3>9.4 Default Credentials</h3>
+<table>
+<thead>
+<tr>
+<th>Role</th>
+<th>Username</th>
+<th>Password</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Analyst</td>
+<td>analyst</td>
+<td>analyst123</td>
+</tr>
+<tr>
+<td>Admin</td>
+<td>admin</td>
+<td>admin123</td>
+</tr>
+</tbody>
+</table>
+<h3>9.5 Operational Notes</h3>
+<ul>
+<li>Keep model warm: OLLAMA_KEEP_ALIVE=1h in ollama.service.d</li>
+<li>Auto-collection: enable via Admin Panel -&gt; Scheduler</li>
+<li>Backups: copy backend/observatory.db regularly</li>
+<li>Logs: /tmp/api.log, /tmp/vite.log, journalctl -u ollama</li>
+</ul>
+<hr />
+<h2>10. Limitations</h2>
+<h3>10.1 Technical Limitations</h3>
+<ul>
+<li>SQLite concurrency (fine for prototype)</li>
+<li>Users stored in memory - reset on backend restart</li>
+<li>Passwords not hashed - prototype only</li>
+<li>CPU inference - ~30-60s per publication</li>
+<li>No migrations - schema changes applied manually</li>
+</ul>
+<h3>10.2 AI Limitations</h3>
+<ul>
+<li>Model size: qwen2.5:3b (smaller than GPT-4 class)</li>
+<li>Classification accuracy: ~65-75% top-1</li>
+<li>Truncation: summaries use first 800 chars only</li>
+<li>No hallucination guard - relies on user verification</li>
+<li>English only - no translation</li>
+</ul>
+<h3>10.3 Data Limitations</h3>
+<ul>
+<li>IMF uses third-party RSS relay (can go down)</li>
+<li>World Bank API returns mixed document types</li>
+<li>Some sources have no abstract - summary quality drops</li>
+<li>Historical publications (pre-2020) rare in some sources</li>
+</ul>
+<h3>10.4 Scope Limitations</h3>
+<ul>
+<li>No user-configured alert delivery (email / SMS)</li>
+<li>No semantic search (keyword only)</li>
+<li>No production hardening</li>
+<li>No multi-language support</li>
+<li>Time filter not applied to all dashboard widgets</li>
+</ul>
+<p>Full details in docs/AI_LIMITATIONS.md.</p>
+<hr />
+<h2>11. Conclusion &amp; Recommendations</h2>
+<h3>11.1 Conclusion</h3>
+<p>The AI Innovation Observatory is a working, tested, documented prototype
+that meets the core success criteria in the project brief:</p>
+<table>
+<thead>
+<tr>
+<th>#</th>
+<th>Success Criterion</th>
+<th>Status</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td>Collects from approved sources</td>
+<td>Met</td>
+</tr>
+<tr>
+<td>2</td>
+<td>Auto-identifies + stores new pubs</td>
+<td>Met</td>
+</tr>
+<tr>
+<td>3</td>
+<td>Classifies into topics</td>
+<td>Met</td>
+</tr>
+<tr>
+<td>4</td>
+<td>AI summaries reflect source</td>
+<td>Met</td>
+</tr>
+<tr>
+<td>5</td>
+<td>Search + retrieval works</td>
+<td>Met</td>
+</tr>
+<tr>
+<td>6</td>
+<td>Trends identified + visualized</td>
+<td>Met</td>
+</tr>
+<tr>
+<td>7</td>
+<td>Traceable relevance assessments</td>
+<td>Met</td>
+</tr>
+<tr>
+<td>8</td>
+<td>Every AI insight -&gt; original source</td>
+<td>Met</td>
+</tr>
+<tr>
+<td>9</td>
+<td>Dashboard clear overview</td>
+<td>Met</td>
+</tr>
+<tr>
+<td>10</td>
+<td>Source code + docs + tests + deployment</td>
+<td>Met</td>
+</tr>
+</tbody>
+</table>
+<p>The system is ready for demonstration and ready to be hardened for
+production use.</p>
+<h3>11.2 Recommendations for Future Work</h3>
+<p>Immediate (1-2 weeks):</p>
+<ol>
+<li>Manual evaluation set - hand-label 25 publications, measure precision/recall</li>
+<li>Collect user feedback after demo</li>
+</ol>
+<p>Short-term (2-4 weeks):</p>
+<ol>
+<li>Migrate SQLite -&gt; PostgreSQL</li>
+<li>Persist users with hashed passwords (bcrypt / argon2)</li>
+<li>Add Alembic migrations</li>
+<li>Overlapping-run protection in scheduler</li>
+</ol>
+<p>Medium-term (1-2 months):</p>
+<ol>
+<li>Email / in-app alert delivery</li>
+<li>Semantic search with embeddings</li>
+<li>Apply time filter to all dashboard widgets</li>
+<li>Export intelligence briefs as PDF</li>
+</ol>
+<p>Long-term (3-6 months):</p>
+<ol>
+<li>Multi-language publication support</li>
+<li>Add more peer central bank sources (verified)</li>
+<li>Train or fine-tune a domain-specific classifier</li>
+<li>Mobile-friendly dashboard</li>
+<li>Reverse-proxy + HTTPS for internal deployment</li>
+</ol>
+<hr />
+<h2>12. References</h2>
+<ol>
+<li>Bank for International Settlements - https://www.bis.org</li>
+<li>International Monetary Fund - https://www.imf.org</li>
+<li>World Bank - https://www.worldbank.org</li>
+<li>Central Bank of Kenya - https://www.centralbank.go.ke</li>
+<li>Ollama - https://ollama.com</li>
+<li>Qwen 2.5 Model Card - https://qwenlm.github.io</li>
+<li>FastAPI - https://fastapi.tiangolo.com</li>
+<li>SQLAlchemy - https://www.sqlalchemy.org</li>
+<li>React - https://react.dev</li>
+<li>Tailwind CSS - https://tailwindcss.com</li>
+<li>shadcn/ui - https://ui.shadcn.com</li>
+<li>Recharts - https://recharts.org</li>
+<li>Docker Compose - https://docs.docker.com/compose</li>
+</ol>
+<hr />
+<h2>13. Appendices</h2>
+<h3>Appendix A - Supporting Documentation</h3>
+<table>
+<thead>
+<tr>
+<th>Document</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>README.md</td>
+<td>Setup, architecture, API reference</td>
+</tr>
+<tr>
+<td>docs/SOURCES.md</td>
+<td>Source integration details</td>
+</tr>
+<tr>
+<td>docs/AI_LIMITATIONS.md</td>
+<td>Honest accuracy assessment</td>
+</tr>
+<tr>
+<td>docs/USER_GUIDE.md</td>
+<td>Analyst + admin workflows</td>
+</tr>
+<tr>
+<td>docs/TEST_REPORT.md</td>
+<td>Full test results</td>
+</tr>
+<tr>
+<td>docs/architecture.pdf</td>
+<td>Visual architecture diagram</td>
+</tr>
+<tr>
+<td>docs/database_design.pdf</td>
+<td>Database schema diagram</td>
+</tr>
+</tbody>
+</table>
+<h3>Appendix B - Glossary</h3>
+<table>
+<thead>
+<tr>
+<th>Term</th>
+<th>Definition</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>AI</td>
+<td>Artificial Intelligence</td>
+</tr>
+<tr>
+<td>API</td>
+<td>Application Programming Interface</td>
+</tr>
+<tr>
+<td>BIS</td>
+<td>Bank for International Settlements</td>
+</tr>
+<tr>
+<td>BOT</td>
+<td>Bank of Tanzania</td>
+</tr>
+<tr>
+<td>CBK</td>
+<td>Central Bank of Kenya</td>
+</tr>
+<tr>
+<td>CBDC</td>
+<td>Central Bank Digital Currency</td>
+</tr>
+<tr>
+<td>ECB</td>
+<td>European Central Bank</td>
+</tr>
+<tr>
+<td>FastAPI</td>
+<td>Python web framework</td>
+</tr>
+<tr>
+<td>IMF</td>
+<td>International Monetary Fund</td>
+</tr>
+<tr>
+<td>LLM</td>
+<td>Large Language Model</td>
+</tr>
+<tr>
+<td>NLP</td>
+<td>Natural Language Processing</td>
+</tr>
+<tr>
+<td>ORM</td>
+<td>Object-Relational Mapping</td>
+</tr>
+<tr>
+<td>RSS</td>
+<td>Really Simple Syndication</td>
+</tr>
+<tr>
+<td>SQLite</td>
+<td>File-based relational database</td>
+</tr>
+<tr>
+<td>Vite</td>
+<td>Frontend build tool</td>
+</tr>
+</tbody>
+</table>
+<h3>Appendix C - Source Code Statistics</h3>
+<table>
+<thead>
+<tr>
+<th>Metric</th>
+<th>Value</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Backend Python files</td>
+<td>~40</td>
+</tr>
+<tr>
+<td>Frontend TypeScript/TSX files</td>
+<td>~30</td>
+</tr>
+<tr>
+<td>Total lines of code</td>
+<td>~10,000+</td>
+</tr>
+<tr>
+<td>API endpoints</td>
+<td>25+</td>
+</tr>
+<tr>
+<td>Database tables</td>
+<td>5</td>
+</tr>
+<tr>
+<td>AI tasks</td>
+<td>3</td>
+</tr>
+<tr>
+<td>Built-in sources</td>
+<td>4</td>
+</tr>
+<tr>
+<td>Analyst pages</td>
+<td>8</td>
+</tr>
+<tr>
+<td>Admin pages</td>
+<td>6</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<p>END OF SYSTEM REPORT</p>
+<p>AI Innovation Observatory for Central Banking &amp; Financial Sector Intelligence
+Version 1.0 - 6 October 2026</p></body></html>
