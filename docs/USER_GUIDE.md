@@ -272,3 +272,79 @@ See `docs/AI_LIMITATIONS.md` for a full breakdown. Key takeaways:
 - **Admin issues:** contact the system administrator
 - **AI accuracy concerns:** see `docs/AI_LIMITATIONS.md`
 - **Technical details:** see `README.md` and `docs/SOURCES.md`
+
+---
+
+## Addendum — 6 October 2026
+
+New features added since the initial user guide:
+
+### Dynamic Topics (Admin)
+
+Admins can now add or delete topic categories directly in **Admin → Manage Topics**.
+
+**To add a topic:**
+1. Click **Add topic**
+2. Fill in a label (e.g. "Central Bank Digital Currency")
+3. Optionally enter a slug (auto-generated if empty)
+4. Add comma-separated keywords
+5. Click **Add topic**
+
+**Important:** New topics only affect publications processed **after** the topic was added. To re-classify existing publications, use **Manage Publications → select → Re-run AI**.
+
+Built-in topics (marked with a shield badge) cannot be deleted.
+
+### Manual Publications (Admin)
+
+Add publications that aren't in any feed — speeches, offline PDFs, etc.
+
+**To add:**
+1. Go to **Admin → Manage Publications**
+2. Click **Add manually**
+3. Fill in title, institution, source URL
+4. Optionally add date and abstract
+5. Check/uncheck **Run AI pipeline now**
+6. Click **Add publication**
+
+Manual publications appear in all analyst views with the same traceability.
+
+### Manage Publications Page (Admin)
+
+New admin page with:
+
+- **Filter tabs**: All / Pending AI / Fallback / Hidden / Manual
+- **Search + source filter**
+- **Bulk actions**: Re-run AI / Hide / Unhide (no delete — use Hide instead)
+- **Stat cards**: Total / Pending AI / Fallback / Hidden / Manual
+
+### Alert Rules (Real Matching)
+
+Rules created in **Alerts & Notifications** now actually run:
+
+- After each collection, the matcher scans new publications against your rules
+- Matches appear in the **Rule Matches** section
+- Rules are stored on the backend (not just your browser)
+
+### Dashboard Changes
+
+- **Publication Timeline** has a working range dropdown (3 / 6 / 12 / 24 months)
+- **Sources Monitored** card shows orphaned sources as an amber warning
+- **Source Distribution** shows hidden/orphaned counts below the legend
+
+### Trends Changes
+
+- **Trend of Key Topics** chart has its own range dropdown
+- **Topic Growth** chart now shows raw additional publications (not %)
+
+### Knowledge Base
+
+- Links to `docs/AI_LIMITATIONS.md` on GitHub for full accuracy details
+- Topics come from the database (reflects any topics you added)
+
+### Login
+
+Login now checks real credentials against the backend user store. Users added in **Manage Users** can log in immediately.
+
+---
+
+*End of addendum*
