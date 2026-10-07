@@ -8,7 +8,7 @@
  *   - Live progress bars for running jobs
  *   - Color-coded by level (critical/high/medium/info/success)
  */
-import { useEffect, useState, useCallback } from "react";
+import { useCallback, useEffect, useState } from "react";
 import {
   Bell, AlertTriangle, Info, CheckCircle2, Plus, Trash2,
   RefreshCw, AlertCircle, Activity, Target, ExternalLink,
@@ -22,7 +22,7 @@ import {
 } from "@/components/ui/select";
 import {
   getAlerts, getRules, createRule as createRuleApi, deleteRule as deleteRuleApi,
-  getRuleMatches,
+  getRuleMatches, getTopics,
   type SystemAlert, type AlertRule, type RuleMatch,
 } from "@/lib/api";
 
@@ -50,6 +50,11 @@ const CATEGORY_COLORS: Record<string, string> = {
 };
 
 export default function Alerts() {
+  const [topicsList, setTopicsList] = useState<string[]>([]);
+  useEffect(() => {
+    getTopics().then(t => setTopicsList(t.map((x: any) => x.slug))).catch(() => {});
+  }, []);
+
   const [alerts, setAlerts] = useState<SystemAlert[]>([]);
   const [rules, setRules] = useState<AlertRule[]>([]);
   const [matches, setMatches] = useState<RuleMatch[]>([]);
@@ -342,7 +347,7 @@ export default function Alerts() {
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="all">Any topic</SelectItem>
-                        {TOPICS.map(t => (
+                        {topicsList.map(t => (
                           <SelectItem key={t} value={t}>{t.replace(/_/g, " ")}</SelectItem>
                         ))}
                       </SelectContent>

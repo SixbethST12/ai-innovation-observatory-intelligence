@@ -44,6 +44,7 @@ export default function Dashboard() {
   const [alerts, setAlerts] = useState<SystemAlert[]>([]);
   const [alertDismissed, setAlertDismissed] = useState(false);
   const [range, setRange] = useState<"7d" | "30d" | "90d" | "all">("90d");
+  const [timelineRange, setTimelineRange] = useState<"3m" | "6m" | "12m" | "24m">("12m");
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -113,8 +114,9 @@ export default function Dashboard() {
     .slice(0, 3);
 
   const recentTimeline = (() => {
+    const months = timelineRange === "3m" ? 3 : timelineRange === "6m" ? 6 : timelineRange === "12m" ? 12 : 24;
     const cutoff = new Date();
-    cutoff.setMonth(cutoff.getMonth() - 12);
+    cutoff.setMonth(cutoff.getMonth() - months);
     return timeline
       .filter(t => new Date(t.month + "-01") >= cutoff)
       .sort((a, b) => a.month.localeCompare(b.month))
@@ -356,15 +358,27 @@ export default function Dashboard() {
       {/* Row 3 — Publication timeline */}
       <Card className="mb-6 overflow-hidden transition-all duration-200 hover:shadow-lg">
         <CardHeader className="bg-gradient-to-r from-[var(--bot-gold-soft)] to-white border-b border-[#f0e8d0]">
-          <div className="flex items-center justify-between">
-            <CardTitle className="text-[15px] text-[var(--bot-navy)] font-bold flex items-center gap-2">
-              <Calendar size={16} className="text-[var(--bot-gold-dark)]" />
-              Publication Timeline — last 12 months
-            </CardTitle>
-            <span className="text-[11px] text-[var(--bot-gold-dark)] font-bold uppercase tracking-wider">
-              {recentTimeline.reduce((s, t) => s + t.count, 0)} pubs
-            </span>
-          </div>
+            <div className="flex items-center justify-between flex-wrap gap-3">
+              <CardTitle className="text-[15px] text-[var(--bot-navy)] font-bold flex items-center gap-2">
+                <Calendar size={16} className="text-[var(--bot-gold-dark)]" />
+                Publication Timeline
+              </CardTitle>
+              <div className="flex items-center gap-3">
+                <span className="text-[11px] text-[var(--bot-gold-dark)] font-bold uppercase tracking-wider">
+                  {recentTimeline.reduce((s, t) => s + t.count, 0)} pubs
+                </span>
+                <select
+                  value={timelineRange}
+                  onChange={(e) => setTimelineRange(e.target.value as any)}
+                  className="bg-white border border-[#e0d6bf] rounded-md px-3 py-1.5 text-xs font-bold text-[var(--bot-navy)] hover:border-[var(--bot-gold)] transition cursor-pointer"
+                >
+                  <option value="3m">Last 3 months</option>
+                  <option value="6m">Last 6 months</option>
+                  <option value="12m">Last 12 months</option>
+                  <option value="24m">Last 24 months</option>
+                </select>
+              </div>
+            </div>
         </CardHeader>
         <CardContent className="pt-6">
           <ResponsiveContainer width="100%" height={280}>

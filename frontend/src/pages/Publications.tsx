@@ -10,7 +10,7 @@
  *   - CSV export of filtered results
  *   - Side drawer for detail view (with prev/next navigation)
  */
-import { useEffect, useState, useMemo, useRef } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   FileText, Building2, Tags, Calendar, ExternalLink,
   Search as SearchIcon, ArrowUpDown, ArrowUp, ArrowDown,
@@ -26,7 +26,7 @@ import {
 import {
   Sheet, SheetContent, SheetHeader, SheetTitle,
 } from "@/components/ui/sheet";
-import { getPublications, type Publication } from "@/lib/api";
+import { getPublications, type Publication , getTopics } from "@/lib/api";
 
 const TOPICS = [
   "monetary_policy", "financial_stability", "banking_regulation",
@@ -54,6 +54,11 @@ type SortKey = "title" | "institution" | "published_date" | "relevance";
 type SortDir = "asc" | "desc";
 
 export default function Publications({ initialTopic = "" }: { initialTopic?: string }) {
+  const [topicsList, setTopicsList] = useState<string[]>([]);
+  useEffect(() => {
+    getTopics().then(t => setTopicsList(t.map((x: any) => x.slug))).catch(() => {});
+  }, []);
+
   const [pubs, setPubs] = useState<Publication[]>([]);
   const [loading, setLoading] = useState(true);
   const [query, setQuery] = useState("");
@@ -98,10 +103,10 @@ export default function Publications({ initialTopic = "" }: { initialTopic?: str
   const suggestions = useMemo(() => {
     if (!query.trim()) return [];
     const q = query.toLowerCase();
-    return TOPICS.filter(t =>
+    return topicsList.filter(t =>
       t.replace(/_/g, " ").includes(q) || t.includes(q)
     ).slice(0, 5);
-  }, [query]);
+  }, [query, topicsList]);
 
   // Filtered + sorted
   const filtered = useMemo(() => {
@@ -268,7 +273,7 @@ export default function Publications({ initialTopic = "" }: { initialTopic?: str
               <SelectTrigger><SelectValue>{topic === "all" ? "All Topics" : topic.replace(/_/g, " ")}</SelectValue></SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All Topics</SelectItem>
-                {TOPICS.map(t => <SelectItem key={t} value={t}>{t.replace(/_/g, " ")}</SelectItem>)}
+                {topicsList.map(t => <SelectItem key={t} value={t}>{t.replace(/_/g, " ")}</SelectItem>)}
               </SelectContent>
             </Select>
 

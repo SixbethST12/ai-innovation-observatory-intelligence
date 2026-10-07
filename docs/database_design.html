@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Database Design — AI Innovation Observatory</title>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+<style>
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+         max-width: 900px; margin: 0 auto; padding: 40px 30px; color: #1c2b45; line-height: 1.55; }
+  h1 { color: #1e3a8a; border-bottom: 3px solid #c8a04a; padding-bottom: 8px; }
+  h2 { color: #1e3a8a; margin-top: 36px; }
+  h3 { color: #1e3a8a; margin-top: 24px; }
+  table { border-collapse: collapse; width: 100%; margin: 16px 0; font-size: 13px; }
+  th { background: #1e3a8a; color: white; text-align: left; padding: 8px 10px; }
+  td { padding: 7px 10px; border-bottom: 1px solid #e2e8f0; }
+  tr:nth-child(even) td { background: #f8fafc; }
+  code { background: #f1f5f9; padding: 2px 6px; border-radius: 4px; font-size: 12px; }
+  pre { background: #f1f5f9; padding: 12px; border-radius: 8px; font-size: 12px; overflow-x: auto; }
+  .diagram { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 20px; margin: 24px 0; text-align: center; }
+  .note { background: #fdf6e3; border-left: 4px solid #c8a04a; padding: 12px 16px; margin: 16px 0; font-size: 13.5px; }
+  .pk { color: #c8a04a; font-weight: bold; }
+  .fk { color: #1e40af; font-style: italic; }
+</style>
+</head>
+<body>
+
+<h1>Database Design</h1>
+<p><strong>AI Innovation Observatory for Central Banking &amp; Financial Sector Intelligence</strong></p>
+<p>Bank of Tanzania — Student Project</p>
+
+<h2>1. Overview</h2>
+<table>
+  <tr><th>Property</th><th>Value</th></tr>
+  <tr><td>Engine</td><td>SQLite 3 (file-based)</td></tr>
+  <tr><td>ORM</td><td>SQLAlchemy 2.0</td></tr>
+  <tr><td>Database file</td><td><code>backend/observatory.db</code></td></tr>
+  <tr><td>Schema definition</td><td><code>backend/app/models.py</code></td></tr>
+  <tr><td>Tables</td><td>4 (publications, sources, alert_rules, rule_matches)</td></tr>
+  <tr><td>Upgrade path</td><td>Change <code>DATABASE_URL</code> in <code>.env</code> to PostgreSQL — no code changes</td></tr>
+</table>
+
+<h2>2. Entity Relationship Diagram</h2>
+
+<div class="diagram">
+<pre class="mermaid">
+erDiagram
+    SOURCES {
+        int id PK
+        string name UK
+        string url
+        string method
+        boolean active
+        boolean builtin
+        string added_by
+        datetime added_at
+    }
+
+    PUBLICATIONS {
+        int id PK
+        string title
+        string institution
+        string source_url
+        datetime published_date
+        string document_type
+        text abstract
+        text raw_content
+        string fingerprint UK
+        text ai_summary
+        string ai_topics
+        text ai_relevance
+        boolean ai_processed
+        datetime ai_processed_at
+        string ai_engine
+        boolean hidden
+        boolean manual
+        datetime collected_at
+    }
+
+    ALERT_RULES {
+        int id PK
+        string keyword
+        string source
+        string topic
+        string priority
+        string created_by
+        datetime created_at
+        boolean active
+    }
+
+    RULE_MATCHES {
+        int id PK
+        int rule_id FK
+        int publication_id FK
+        datetime matched_at
+    }
+
+    SOURCES ||..o{ PUBLICATIONS : "produces (via collector)"
+    ALERT_RULES ||--o{ RULE_MATCHES : "matched by"
+    PUBLICATIONS ||--o{ RULE_MATCHES : "matched to"
+</pre>
+</div>
+
+<div class="note">
+<strong>Relationships:</strong> There are no strict foreign key constraints — the schema uses logical references (dotted line) instead of enforced FKs. This keeps SQLite simple and lets rows survive if a source or rule is deleted. Orphaned rows are surfaced as warnings in the UI.
+</div>
+
+<h2>3. Table: <code>publications</code></h2>
+<p>The core table — every collected or manually added document.</p>
+<table>
+  <tr><th>Column</th><th>Type</th><th>Nullable</th><th>Purpose</th></tr>
+  <tr><td class="pk">id</td><td>Integer</td><td>No</td><td>Primary key</td></tr>
+  <tr><td>title</td><td>String</td><td>No</td><td>Publication title</td></tr>
+  <tr><td>institution</td><td>String (indexed)</td><td>No</td><td>BIS / IMF / World Bank / CBK / custom</td></tr>
+  <tr><td>source_url</td><td>String</td><td>No</td><td>Link to original — never overwritten (traceability)</td></tr>
+  <tr><td>published_date</td><td>DateTime (indexed)</td><td>Yes</td><td>When the source published it</td></tr>
+  <tr><td>document_type</td><td>String</td><td>Yes</td><td>press_release / speech / working_paper / …</td></tr>
+  <tr><td>abstract</td><td>Text</td><td>Yes</td><td>Short summary from the source</td></tr>
+  <tr><td>raw_content</td><td>Text</td><td>Yes</td><td>Full text (when available)</td></tr>
+  <tr><td>fingerprint</td><td>String (UNIQUE, indexed)</td><td>No</td><td>SHA-256 of <code>institution|source_url|title</code> — duplicate detection</td></tr>
+  <tr><td>ai_summary</td><td>Text</td><td>Yes</td><td>6-section AI summary from Ollama</td></tr>
+  <tr><td>ai_topics</td><td>String</td><td>Yes</td><td>Comma-separated topic slugs</td></tr>
+  <tr><td>ai_relevance</td><td>Text</td><td>Yes</td><td>BOT relevance note + disclaimer</td></tr>
+  <tr><td>ai_processed</td><td>Boolean</td><td>No</td><td>Has the AI pipeline run?</td></tr>
+  <tr><td>ai_processed_at</td><td>DateTime</td><td>Yes</td><td>When AI last ran</td></tr>
+  <tr><td>ai_engine</td><td>String</td><td>Yes</td><td><code>ollama</code> or <code>rule-based</code></td></tr>
+  <tr><td>hidden</td><td>Boolean (indexed)</td><td>No</td><td>Excluded from analyst views (admin can hide)</td></tr>
+  <tr><td>manual</td><td>Boolean</td><td>No</td><td>Added manually vs. collected</td></tr>
+  <tr><td>collected_at</td><td>DateTime</td><td>No</td><td>When the system stored it</td></tr>
+</table>
+
+<h3>Design notes</h3>
+<ul>
+  <li><strong>Fingerprint is UNIQUE at the DB level</strong> — even if code has a bug, the database rejects duplicates.</li>
+  <li><strong>AI columns are nullable</strong> — a publication is stored first, enriched second.</li>
+  <li><strong>hidden replaces delete</strong> — nothing is ever lost; admins can restore.</li>
+  <li><strong>Indexes:</strong> institution, published_date, fingerprint, hidden.</li>
+</ul>
+
+<h2>4. Table: <code>sources</code></h2>
+<p>User-added RSS sources (the 4 built-ins live in code, not in this table).</p>
+<table>
+  <tr><th>Column</th><th>Type</th><th>Purpose</th></tr>
+  <tr><td class="pk">id</td><td>Integer</td><td>Primary key</td></tr>
+  <tr><td>name</td><td>String (UNIQUE)</td><td>Source name</td></tr>
+  <tr><td>url</td><td>String</td><td>RSS feed URL</td></tr>
+  <tr><td>method</td><td>String</td><td>Currently always <code>rss</code></td></tr>
+  <tr><td>active</td><td>Boolean</td><td>Enabled/disabled</td></tr>
+  <tr><td>builtin</td><td>Boolean</td><td>Reserved for future use</td></tr>
+  <tr><td>added_by</td><td>String</td><td>Admin username</td></tr>
+  <tr><td>added_at</td><td>DateTime</td><td>When added</td></tr>
+</table>
+
+<h2>5. Table: <code>alert_rules</code></h2>
+<p>User-defined watch rules for notifications.</p>
+<table>
+  <tr><th>Column</th><th>Type</th><th>Purpose</th></tr>
+  <tr><td class="pk">id</td><td>Integer</td><td>Primary key</td></tr>
+  <tr><td>keyword</td><td>String</td><td>Text to match (case-insensitive)</td></tr>
+  <tr><td>source</td><td>String</td><td><code>all</code> or specific institution</td></tr>
+  <tr><td>topic</td><td>String</td><td><code>all</code> or specific topic slug</td></tr>
+  <tr><td>priority</td><td>String</td><td>high / medium / low</td></tr>
+  <tr><td>created_by</td><td>String</td><td>Username</td></tr>
+  <tr><td>created_at</td><td>DateTime</td><td></td></tr>
+  <tr><td>active</td><td>Boolean</td><td>Disable without deleting</td></tr>
+</table>
+
+<h3>Matching rules (all must be true)</h3>
+<ol>
+  <li>Rule source is <code>all</code>, OR equals the publication's institution</li>
+  <li>Rule topic is <code>all</code>, OR is in the publication's ai_topics</li>
+  <li>Rule keyword appears in title, abstract, ai_summary, or ai_topics</li>
+</ol>
+
+<h2>6. Table: <code>rule_matches</code></h2>
+<p>Records every match between a rule and a publication.</p>
+<table>
+  <tr><th>Column</th><th>Type</th><th>Purpose</th></tr>
+  <tr><td class="pk">id</td><td>Integer</td><td>Primary key</td></tr>
+  <tr><td class="fk">rule_id</td><td>Integer (indexed)</td><td>References alert_rules.id</td></tr>
+  <tr><td class="fk">publication_id</td><td>Integer (indexed)</td><td>References publications.id</td></tr>
+  <tr><td>matched_at</td><td>DateTime</td><td>When the match was created</td></tr>
+</table>
+
+<h2>7. Data Flow</h2>
+<pre>
+    ┌──────────────┐
+    │   SOURCES    │  (user-added RSS)
+    └──────┬───────┘
+           │
+           │ collector fetches → Publication objects
+           ▼
+    ┌──────────────────────────────────┐
+    │        PUBLICATIONS              │  ← core table
+    │  dedup by fingerprint (UNIQUE)   │
+    └──────┬───────────────────────────┘
+           │
+           │ rule_matcher scans new rows
+           │ against active rules
+           ▼
+    ┌───────────────┐       ┌──────────────────┐
+    │ ALERT_RULES   │◄──────│  RULE_MATCHES    │
+    └───────────────┘       └──────────────────┘
+</pre>
+
+<h2>8. Users</h2>
+<p>Users are stored <strong>in memory</strong> in <code>backend/app/users.py</code>, not in the database. This is intentional for the prototype:</p>
+<ul>
+  <li>No password hashing (prototype only — documented)</li>
+  <li>Resets when the backend restarts</li>
+  <li>Upgrade path: add a <code>users</code> table with hashed passwords</li>
+</ul>
+
+<h2>9. Known Limitations</h2>
+<table>
+  <tr><th>Limitation</th><th>Impact</th><th>Fix if needed</th></tr>
+  <tr><td>No users table</td><td>Logins reset on restart</td><td>Add User model + hashed passwords</td></tr>
+  <tr><td>ai_topics is comma-separated string</td><td>Harder SQL joins for topic queries</td><td>Add publication_topics M2M table</td></tr>
+  <tr><td>No FK constraint on rule_matches</td><td>Orphan rows possible</td><td>Add ON DELETE CASCADE</td></tr>
+  <tr><td>No UNIQUE on (rule_id, publication_id)</td><td>Theoretical duplicate matches</td><td>Add UNIQUE constraint</td></tr>
+  <tr><td>Plain-text password (in-memory)</td><td>Security risk if compromised</td><td>Use bcrypt/argon2</td></tr>
+  <tr><td>No migrations</td><td>ALTER TABLE done manually</td><td>Add Alembic</td></tr>
+  <tr><td>SQLite write concurrency</td><td>Locks under heavy load</td><td>Switch to PostgreSQL</td></tr>
+</table>
+
+<h2>10. Example Queries</h2>
+
+<h3>Count publications by source</h3>
+<pre>SELECT institution, COUNT(*) FROM publications
+WHERE hidden = 0
+GROUP BY institution
+ORDER BY COUNT(*) DESC;</pre>
+
+<h3>Find fallback rows that need reprocessing</h3>
+<pre>SELECT id, title FROM publications
+WHERE ai_engine = 'rule-based' AND hidden = 0;</pre>
+
+<h3>Recent rule matches</h3>
+<pre>SELECT r.keyword, p.title, m.matched_at
+FROM rule_matches m
+JOIN alert_rules r ON r.id = m.rule_id
+JOIN publications p ON p.id = m.publication_id
+ORDER BY m.matched_at DESC
+LIMIT 10;</pre>
+
+<h3>Orphaned publications</h3>
+<pre>SELECT institution, COUNT(*) FROM publications
+WHERE institution NOT IN ('BIS', 'IMF', 'World Bank', 'CBK')
+  AND institution NOT IN (SELECT name FROM sources)
+GROUP BY institution;</pre>
+
+<script>
+  mermaid.initialize({ startOnLoad: true, theme: 'neutral' });
+</script>
+</body>
+</html>

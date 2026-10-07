@@ -311,3 +311,24 @@ export type InstitutionsResponse = {
   hidden_count: number;
   orphaned_count: number;
 };
+
+// ============================================================
+// Dynamic topics
+// ============================================================
+export type TopicRow = {
+  id: number;
+  slug: string;
+  label: string;
+  keywords: string[];
+  active: boolean;
+  is_builtin: boolean;
+};
+
+export const getTopics = () =>
+  client.get<TopicRow[]>("/admin/topics").then(r => r.data);
+
+export const addTopic = (payload: { slug: string; label: string; keywords: string[] }) =>
+  client.post<TopicRow>("/admin/topics", payload).then(r => r.data);
+
+export const removeTopic = (slug: string) =>
+  client.delete(`/admin/topics/${slug}`).then(r => r.data);

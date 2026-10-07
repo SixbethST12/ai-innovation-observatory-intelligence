@@ -47,6 +47,7 @@ export default function Trends() {
   const [insights, setInsights] = useState<InsightsData | null>(null);
   const [insightsLoading, setInsightsLoading] = useState(true);
   const [range, setRange] = useState<"3m" | "6m" | "12m">("12m");
+  const [chartRange, setChartRange] = useState<"3m" | "6m" | "12m" | "24m">("12m");
   const [loading, setLoading] = useState(true);
 
   // Fast data
@@ -77,7 +78,8 @@ export default function Trends() {
   const lineChartData = useMemo(() => {
     const months = new Set<string>();
     const cutoff = new Date();
-    cutoff.setMonth(cutoff.getMonth() - (range === "3m" ? 3 : range === "6m" ? 6 : 12));
+    const cm = chartRange === "3m" ? 3 : chartRange === "6m" ? 6 : chartRange === "12m" ? 12 : 24;
+    cutoff.setMonth(cutoff.getMonth() - cm);
 
     const topSlugs = topics.slice(0, 6).map(t => t.topic);
     topSlugs.forEach(slug => {
@@ -99,7 +101,7 @@ export default function Trends() {
       });
       return row;
     });
-  }, [topicTimeline, topics, range]);
+  }, [topicTimeline, topics, chartRange]);
 
   const lineTopics = useMemo(() => topics.slice(0, 6).map(t => t.topic), [topics]);
 
@@ -108,7 +110,7 @@ export default function Trends() {
     return emerging.map(e => ({
       topic: e.topic.replace(/_/g, " "),
       slug: e.topic,
-      rate: e.prior === 0 ? 100 : Math.round(((e.recent - e.prior) / Math.max(e.prior, 1)) * 100),
+      rate: e.score,           // raw delta
     })).slice(0, 6);
   }, [emerging]);
 
@@ -153,40 +155,71 @@ export default function Trends() {
       {/* Row 1 — Line chart + Insights */}
       <div className="grid grid-cols-[1.5fr_1fr] gap-5 mb-6">
         {/* Multi-line chart */}
-        <Card className="transition-all hover:shadow-lg">
-          <CardHeader className="border-b border-gray-100">
-            <CardTitle className="text-[15px] text-[var(--bot-navy)] font-bold flex items-center gap-2">
-              <TrendingUp size={16} className="text-[var(--bot-gold-dark)]" />
-              Trend of Key Topics Over Time
-            </CardTitle>
+        <Card className="transition-all hover:shadow-lg overflow-hidden">
+          <CardHeader className="border-b border-gray-100 bg-gradient-to-r from-white to-[var(--bot-gold-soft)]/40">
+            <div className="flex items-center justify-between flex-wrap gap-3">
+              <CardTitle className="text-[15px] text-[var(--bot-navy)] font-bold flex items-center gap-2">
+                <TrendingUp size={16} className="text-[var(--bot-gold-dark)]" />
+                Trend of Key Topics Over Time
+              </CardTitle>
+              <select
+                value={chartRange}
+                onChange={(e) => setChartRange(e.target.value as any)}
+                className="bg-white border border-[#e0d6bf] rounded-md px-3 py-1.5 text-xs font-bold text-[var(--bot-navy)] hover:border-[var(--bot-gold)] transition cursor-pointer"
+              >
+                <option value="3m">Last 3 months</option>
+                <option value="6m">Last 6 months</option>
+                <option value="12m">Last 12 months</option>
+                <option value="24m">Last 24 months</option>
+              </select>
+            </div>
           </CardHeader>
           <CardContent className="pt-6">
             {lineChartData.length === 0 ? (
               <div className="py-16 text-center text-gray-500 text-sm">No timeline data for this range.</div>
             ) : (
-              <ResponsiveContainer width="100%" height={360}>
-                <LineChart data={lineChartData} margin={{ left: 0, right: 20, top: 5, bottom: 5 }}>
+              <ResponsiveContainer width="100%" height={380}>
+                <LineChart data={lineChartData} margin={{ left: 0, right: 24, top: 10, bottom: 8 }}>
                   <defs>
                     {lineTopics.map(slug => (
                       <linearGradient key={slug} id={`grad-${slug}`} x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="0%" stopColor={TOPIC_COLORS[slug] || "#1e40af"} stopOpacity={0.3} />
-                        <stop offset="100%" stopColor={TOPIC_COLORS[slug] || "#1e40af"} stopOpacity={0} />
+                        <stop offset="0%" stopColor={TOPIC_COLORS[slug] || "#1e40af"} stopOpacity={0.35} />
+                        <stop offset="100%" stopColor={TOPIC_COLORS[slug] || "#1e40af"} stopOpacity={0.02} />
                       </linearGradient>
                     ))}
                   </defs>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#eef2f7" vertical={false} />
-                  <XAxis dataKey="label" stroke="#94a3b8" tick={{ fontSize: 11, fontWeight: 600 }} />
-                  <YAxis stroke="#94a3b8" tick={{ fontSize: 11, fontWeight: 600 }} allowDecimals={false} />
+                  <CartesianGrid strokeDasharray="4 4" stroke="#eef2f7" vertical={false} />
+                  <XAxis
+                    dataKey="label"
+                    stroke="#94a3b8"
+                    tick={{ fontSize: 11, fontWeight: 600 }}
+                    axisLine={{ stroke: "#e2e8f0" }}
+                    tickLine={false}
+                  />
+                  <YAxis
+                    stroke="#94a3b8"
+                    tick={{ fontSize: 11, fontWeight: 600 }}
+                    allowDecimals={false}
+                    axisLine={false}
+                    tickLine={false}
+                  />
                   <Tooltip
                     contentStyle={{
-                      borderRadius: 10, border: "1px solid #e2e8f0",
-                      fontSize: 12, fontWeight: 600,
-                      boxShadow: "0 4px 12px rgba(30,58,138,.1)",
+                      borderRadius: 12,
+                      border: "1px solid #e2e8f0",
+                      fontSize: 12.5,
+                      fontWeight: 600,
+                      boxShadow: "0 8px 24px rgba(30,58,138,.12)",
+                      padding: "10px 14px",
                     }}
+                    labelStyle={{ color: "#1e3a8a", fontWeight: 800, marginBottom: 6 }}
+                    itemStyle={{ padding: "2px 0" }}
+                    formatter={(value: number, name: string) => [`${value} pubs`, name.replace(/_/g, " ")]}
                   />
                   <Legend
                     iconType="circle"
-                    wrapperStyle={{ fontSize: 11, fontWeight: 700, paddingTop: 8 }}
+                    iconSize={9}
+                    wrapperStyle={{ fontSize: 11.5, fontWeight: 700, paddingTop: 12 }}
                     formatter={(value: string) => value.replace(/_/g, " ")}
                   />
                   {lineTopics.map(slug => (
@@ -195,10 +228,11 @@ export default function Trends() {
                       type="monotone"
                       dataKey={slug}
                       stroke={TOPIC_COLORS[slug] || "#1e40af"}
-                      strokeWidth={2.5}
-                      dot={{ r: 3, strokeWidth: 0 }}
-                      activeDot={{ r: 6 }}
+                      strokeWidth={3}
+                      dot={{ r: 0 }}
+                      activeDot={{ r: 6, strokeWidth: 2, stroke: "#fff" }}
                       name={slug}
+                      animationDuration={800}
                     />
                   ))}
                 </LineChart>
@@ -298,7 +332,7 @@ export default function Trends() {
           <CardHeader>
             <CardTitle className="text-[15px] text-[var(--bot-navy)] font-bold flex items-center gap-2">
               <Target size={16} className="text-[var(--bot-navy)]" />
-              Topic Growth Rate
+              Topic Growth — Additional Publications
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -315,7 +349,7 @@ export default function Trends() {
                 />
                 <Tooltip
                   contentStyle={{ borderRadius: 8, border: "1px solid #e2e8f0", fontSize: 12, fontWeight: 600 }}
-                  formatter={(v: number) => [`${v}%`, "Growth"]}
+                  formatter={(v: number) => [`+${v} more pubs`, "Growth"]}
                 />
                 <Bar dataKey="rate" radius={[0, 8, 8, 0]} barSize={18}>
                   {growthRates.map((g) => (

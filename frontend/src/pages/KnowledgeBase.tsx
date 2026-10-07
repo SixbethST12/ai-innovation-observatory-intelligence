@@ -9,7 +9,7 @@
  *   - About section with honest AI disclaimer
  *   - Click any tile → side drawer with matching publications
  */
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   Coins, Shield, Landmark, TrendingUp, Wallet, Cpu, Brain,
   CreditCard, Lock, Leaf, Users, Building2, Calendar,
@@ -22,7 +22,8 @@ import { Input } from "@/components/ui/input";
 import {
   Sheet, SheetContent, SheetHeader, SheetTitle,
 } from "@/components/ui/sheet";
-import { getPublications, getInstitutions, type Publication, type InstitutionCount } from "@/lib/api";
+import { getPublications, getInstitutions, type Publication, type InstitutionCount, getTopics } from "@/lib/api";
+// eslint-disable-next-line
 
 const TOPIC_META: Record<string, { label: string; icon: React.ComponentType<{ size?: number }>; color: string }> = {
   monetary_policy:         { label: "Monetary Policy",               icon: Coins,      color: "#1e40af" },
@@ -38,12 +39,40 @@ const TOPIC_META: Record<string, { label: string; icon: React.ComponentType<{ si
   financial_inclusion:     { label: "Financial Inclusion",           icon: Users,      color: "#be185d" },
 };
 
+
+const FALLBACK_COLORS = [
+  "#0ea5e9", "#f43f5e", "#8b5cf6", "#f59e0b", "#10b981",
+  "#6366f1", "#ec4899", "#14b8a6", "#a855f7", "#ef4444", "#22c55e",
+];
+
+
 type DrawerData = {
   title: string;
   items: Publication[];
 } | null;
 
 export default function KnowledgeBase() {
+  const [dbTopics, setDbTopics] = useState<{slug: string; label: string}[]>([]);
+  useEffect(() => {
+    getTopics().then(t => setDbTopics(t.map((x: any) => ({ slug: x.slug, label: x.label })))).catch(() => {});
+  }, []);
+
+  // Merge DB topics with hardcoded icons/colors; unknown slugs get defaults
+  const mergedTopics = useMemo(() => {
+    if (dbTopics.length === 0) return TOPIC_META;
+    const out: Record<string, { label: string; icon: any; color: string }> = {};
+    const iconNames = Object.values(TOPIC_META);
+    dbTopics.forEach((t, i) => {
+      const existing = (TOPIC_META as any)[t.slug];
+      out[t.slug] = existing || {
+        label: t.label,
+        icon: iconNames[i % iconNames.length].icon,
+        color: FALLBACK_COLORS[i % FALLBACK_COLORS.length],
+      };
+    });
+    return out;
+  }, [dbTopics]);
+
   const [pubs, setPubs] = useState<Publication[]>([]);
   const [institutions, setInstitutions] = useState<InstitutionCount[]>([]);
   const [loading, setLoading] = useState(true);
@@ -61,7 +90,7 @@ export default function KnowledgeBase() {
 
   const topicCounts = useMemo(() => {
     const m: Record<string, number> = {};
-    Object.keys(TOPIC_META).forEach(slug => { m[slug] = 0; });
+    Object.keys(mergedTopics).forEach(slug => { m[slug] = 0; });
     pubs.forEach(p => {
       p.ai_topics?.split(",").forEach(t => {
         const k = t.trim();
@@ -147,10 +176,10 @@ export default function KnowledgeBase() {
         <div className="flex items-center gap-2 mb-4">
           <BookOpen size={16} className="text-[var(--bot-gold-dark)]" />
           <h2 className="text-base font-extrabold text-[var(--bot-navy)]">Browse by Topic</h2>
-          <span className="text-xs text-gray-500 font-semibold">({Object.keys(TOPIC_META).length} categories)</span>
+          <span className="text-xs text-gray-500 font-semibold">({Object.keys(mergedTopics).length} categories)</span>
         </div>
         <div className="grid grid-cols-3 gap-4">
-          {Object.entries(TOPIC_META).map(([slug, meta]) => {
+          {Object.entries(mergedTopics).map(([slug, meta]) => {
             const Icon = meta.icon;
             const count = topicCounts[slug] || 0;
             const pct = total ? Math.round((count / total) * 100) : 0;
@@ -258,7 +287,7 @@ export default function KnowledgeBase() {
             <li>• AI-classified into <strong>11 canonical central banking topics</strong> using <strong>Ollama qwen2.5:3b</strong></li>
             <li>• Every summary, classification, and relevance note is <strong>AI-generated</strong></li>
             <li>• Always verify against the original source — link available on every publication</li>
-            <li>• For accuracy limits see <code className="bg-white px-1.5 rounded">docs/AI_LIMITATIONS.md</code></li>
+            <li>• For accuracy limits see <a href="https://github.com/SixbethST12/ai-innovation-observatory-intelligence/blob/main/docs/AI_LIMITATIONS.md" target="_blank" rel="noreferrer" className="text-blue-600 hover:underline font-bold">docs/AI_LIMITATIONS.md ↗</a></li>
           </ul>
         </CardContent>
       </Card>

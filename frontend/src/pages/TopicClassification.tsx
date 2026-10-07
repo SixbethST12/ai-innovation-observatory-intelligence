@@ -1,7 +1,7 @@
 /**
  * TopicClassification.tsx — Browse publications grouped by the 11 topics.
  */
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   Coins, Shield, Landmark, TrendingUp, Wallet, Cpu, Brain,
   CreditCard, Lock, Leaf, Users, ExternalLink,
@@ -12,7 +12,8 @@ import { Button } from "@/components/ui/button";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle,
 } from "@/components/ui/dialog";
-import { getPublications, getTrends, type Publication, type TopicCount } from "@/lib/api";
+import { getPublications, getTrends, type Publication, type TopicCount, getTopics } from "@/lib/api";
+// eslint-disable-next-line
 
 const TOPIC_META: Record<string, { label: string; icon: React.ComponentType<{ size?: number }>; color: string }> = {
   monetary_policy:         { label: "Monetary Policy",                 icon: Coins,     color: "#1e40af" },
@@ -28,7 +29,35 @@ const TOPIC_META: Record<string, { label: string; icon: React.ComponentType<{ si
   financial_inclusion:     { label: "Financial Inclusion",             icon: Users,     color: "#be185d" },
 };
 
+
+const FALLBACK_COLORS = [
+  "#0ea5e9", "#f43f5e", "#8b5cf6", "#f59e0b", "#10b981",
+  "#6366f1", "#ec4899", "#14b8a6", "#a855f7", "#ef4444", "#22c55e",
+];
+
+
 export default function TopicClassification() {
+  const [dbTopics, setDbTopics] = useState<{slug: string; label: string}[]>([]);
+  useEffect(() => {
+    getTopics().then(t => setDbTopics(t.map((x: any) => ({ slug: x.slug, label: x.label })))).catch(() => {});
+  }, []);
+
+  // Merge DB topics with hardcoded icons/colors; unknown slugs get defaults
+  const mergedTopics = useMemo(() => {
+    if (dbTopics.length === 0) return TOPIC_META;
+    const out: Record<string, { label: string; icon: any; color: string }> = {};
+    const iconNames = Object.values(TOPIC_META);
+    dbTopics.forEach((t, i) => {
+      const existing = (TOPIC_META as any)[t.slug];
+      out[t.slug] = existing || {
+        label: t.label,
+        icon: iconNames[i % iconNames.length].icon,
+        color: FALLBACK_COLORS[i % FALLBACK_COLORS.length],
+      };
+    });
+    return out;
+  }, [dbTopics]);
+
   const [pubs, setPubs] = useState<Publication[]>([]);
   const [topicCounts, setTopicCounts] = useState<TopicCount[]>([]);
   const [loading, setLoading] = useState(true);
@@ -64,13 +93,13 @@ export default function TopicClassification() {
           Topic Classification
         </h1>
         <p className="text-sm text-gray-500 mt-1">
-          Browse publications classified into {Object.keys(TOPIC_META).length} central banking and financial sector topics
+          Browse publications classified into {Object.keys(mergedTopics).length} central banking and financial sector topics
         </p>
       </div>
 
       {/* Topic grid */}
       <div className="grid grid-cols-3 gap-5">
-        {Object.entries(TOPIC_META).map(([slug, meta]) => {
+        {Object.entries(mergedTopics).map(([slug, meta]) => {
           const Icon = meta.icon;
           const count = countByTopic[slug] || 0;
           return (
@@ -116,7 +145,7 @@ export default function TopicClassification() {
             <>
               <DialogHeader>
                 <DialogTitle className="text-lg font-bold text-[var(--bot-navy)] text-left">
-                  {TOPIC_META[selected].label}
+                  {mergedTopics[selected].label}
                   <span className="ml-2 text-sm font-normal text-gray-500">
                     ({selectedPubs.length} publications)
                   </span>

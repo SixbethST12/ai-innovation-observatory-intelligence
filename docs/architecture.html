@@ -1,0 +1,327 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>System Architecture & Database Design</title>
+<style>
+  @page { size: A4; margin: 15mm; }
+  * { box-sizing: border-box; }
+  body { font-family: 'Segoe UI', Roboto, sans-serif; color: #1c2b45; margin: 0; font-size: 13px; line-height: 1.5; }
+  .page { page-break-after: always; padding: 10px; }
+  .page:last-child { page-break-after: auto; }
+
+  h1 { color: #1e3a8a; font-size: 26px; margin: 0 0 8px; border-bottom: 4px solid #c8a04a; padding-bottom: 8px; }
+  h2 { color: #1e3a8a; font-size: 20px; margin: 0 0 14px; border-bottom: 2px solid #c8a04a; padding-bottom: 4px; }
+  h3 { color: #1e3a8a; font-size: 15px; margin: 12px 0 6px; }
+  p { margin: 6px 0; }
+  .sub { color: #5a6a80; font-size: 13px; margin: 0 0 18px; }
+
+  /* Layer diagram */
+  .layers { display: flex; flex-direction: column; gap: 10px; margin: 20px 0; }
+  .layer { display: flex; align-items: center; gap: 12px; padding: 12px 16px; border-radius: 10px; color: white; font-weight: 600; }
+  .layer .num { width: 26px; height: 26px; border-radius: 50%; background: rgba(255,255,255,0.25); display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 13px; }
+  .layer .label { flex: 1; }
+  .layer .tech { font-size: 11px; opacity: 0.85; font-weight: 400; }
+  .l1 { background: #0d9488; }
+  .l2 { background: #0891b2; }
+  .l3 { background: #7c3aed; }
+  .l4 { background: #c8a04a; }
+  .l5 { background: #1e40af; }
+  .l6 { background: #be185d; }
+  .l7 { background: #334155; }
+
+  /* Flow diagram */
+  .flow { display: flex; align-items: center; justify-content: space-between; margin: 20px 0; flex-wrap: wrap; gap: 6px; }
+  .flow-node { background: #f1f5f9; border: 2px solid #1e3a8a; border-radius: 8px; padding: 10px 12px; font-size: 11px; font-weight: 700; color: #1e3a8a; text-align: center; flex: 1; min-width: 90px; }
+  .flow-node small { display: block; font-weight: 400; color: #64748b; font-size: 9.5px; margin-top: 3px; }
+  .arrow { color: #c8a04a; font-size: 20px; font-weight: bold; }
+
+  /* Tables */
+  table { border-collapse: collapse; width: 100%; margin: 10px 0; font-size: 11.5px; }
+  th { background: #1e3a8a; color: white; text-align: left; padding: 7px 9px; font-size: 11px; }
+  td { padding: 6px 9px; border-bottom: 1px solid #e2e8f0; vertical-align: top; }
+  tr:nth-child(even) td { background: #f8fafc; }
+  code { background: #f1f5f9; padding: 1px 5px; border-radius: 3px; font-family: 'Consolas', monospace; font-size: 10.5px; color: #be185d; }
+  .pk { color: #c8a04a; font-weight: bold; }
+  .fk { color: #1e40af; font-style: italic; }
+
+  /* ER Diagram */
+  .er { display: flex; gap: 16px; flex-wrap: wrap; margin: 16px 0; justify-content: center; }
+  .er-box { background: white; border: 2px solid #1e3a8a; border-radius: 8px; padding: 0; min-width: 210px; }
+  .er-box h4 { background: #1e3a8a; color: white; margin: 0; padding: 8px 12px; font-size: 12.5px; border-radius: 6px 6px 0 0; }
+  .er-box ul { list-style: none; padding: 8px 12px; margin: 0; font-size: 10.5px; font-family: 'Consolas', monospace; }
+  .er-box li { padding: 2px 0; border-bottom: 1px dotted #e2e8f0; }
+  .er-box li:last-child { border: none; }
+  .er-box .type { color: #64748b; float: right; font-size: 9.5px; }
+
+  /* Cards */
+  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin: 12px 0; }
+  .card { background: #f8fafc; border-left: 4px solid #c8a04a; padding: 10px 14px; border-radius: 4px; }
+  .card h4 { margin: 0 0 4px; color: #1e3a8a; font-size: 13px; }
+  .card p { margin: 0; font-size: 11.5px; color: #475569; }
+
+  .note { background: #fdf6e3; border-left: 4px solid #c8a04a; padding: 10px 14px; margin: 12px 0; font-size: 12px; border-radius: 4px; }
+  .badge { display: inline-block; background: #e0f2fe; color: #0369a1; padding: 2px 8px; border-radius: 10px; font-size: 10px; font-weight: 700; margin-right: 4px; }
+
+  /* Title page */
+  .cover { text-align: center; padding-top: 120px; }
+  .cover h1 { font-size: 34px; border: none; margin-bottom: 20px; }
+  .cover .brand { color: #c8a04a; font-size: 15px; font-weight: 700; letter-spacing: 3px; text-transform: uppercase; margin-bottom: 30px; }
+  .cover .tagline { color: #5a6a80; font-size: 15px; margin: 20px 0 60px; }
+  .cover .meta { color: #64748b; font-size: 12px; margin-top: 80px; }
+</style>
+</head>
+<body>
+
+<!-- ============ PAGE 1: COVER ============ -->
+<div class="page cover">
+  <div class="brand">Bank of Tanzania</div>
+  <h1>AI Innovation Observatory</h1>
+  <div class="tagline">for Central Banking & Financial Sector Intelligence</div>
+  <hr style="width:80px;border:2px solid #c8a04a;margin:30px auto;">
+  <p style="font-size:17px;color:#1e3a8a;font-weight:600;">System Architecture &amp; Database Design</p>
+  <div class="meta">
+    <p>Student Project Prototype</p>
+    <p>September 2026</p>
+  </div>
+</div>
+
+<!-- ============ PAGE 2: ARCHITECTURE OVERVIEW ============ -->
+<div class="page">
+  <h2>1. System Architecture — 7 Layers</h2>
+  <p class="sub">Bottom-up: data flows from external sources through collection, storage, and AI up to the analyst dashboard.</p>
+
+  <div class="layers">
+    <div class="layer l7"><span class="num">7</span><span class="label">Users<br><span class="tech">BoT analysts · researchers · admins</span></span></div>
+    <div class="layer l6"><span class="num">6</span><span class="label">Presentation Layer<br><span class="tech">React 19 + Vite + Tailwind + shadcn/ui</span></span></div>
+    <div class="layer l5"><span class="num">5</span><span class="label">API Layer<br><span class="tech">FastAPI (REST / JSON) — 25+ endpoints</span></span></div>
+    <div class="layer l4"><span class="num">4</span><span class="label">AI &amp; Intelligence Layer<br><span class="tech">Ollama (qwen2.5:3b) — summarize, classify, relevance</span></span></div>
+    <div class="layer l3"><span class="num">3</span><span class="label">Data Layer<br><span class="tech">SQLite + SQLAlchemy ORM — 4 tables</span></span></div>
+    <div class="layer l2"><span class="num">2</span><span class="label">Data Collection Layer<br><span class="tech">Python: RSS, REST, HTML relay + dedup</span></span></div>
+    <div class="layer l1"><span class="num">1</span><span class="label">External Trusted Sources<br><span class="tech">BIS · IMF · World Bank · CBK · custom RSS</span></span></div>
+  </div>
+
+  <div class="note">
+    <strong>Design principle:</strong> Each layer only talks to the layer directly above and below it. Changing the AI model does not affect the API. Adding a source does not affect the frontend.
+  </div>
+</div>
+
+<!-- ============ PAGE 3: DATA COLLECTION ============ -->
+<div class="page">
+  <h2>2. Data Collection Layer</h2>
+  <p class="sub">Fetches from 4 built-in sources + any user-added RSS feed. Normalizes everything into one schema.</p>
+
+  <div class="flow">
+    <div class="flow-node">Scheduler<small>run_all()</small></div>
+    <span class="arrow">→</span>
+    <div class="flow-node">Collectors<small>BIS · IMF · WB · CBK</small></div>
+    <span class="arrow">→</span>
+    <div class="flow-node">User Sources<small>ECB · Fed · …</small></div>
+    <span class="arrow">→</span>
+    <div class="flow-node">Normalize<small>Publication objects</small></div>
+    <span class="arrow">→</span>
+    <div class="flow-node">Dedup<small>fingerprint</small></div>
+    <span class="arrow">→</span>
+    <div class="flow-node">Storage<small>save_publications()</small></div>
+  </div>
+
+  <h3>Built-in collectors</h3>
+  <table>
+    <tr><th>Source</th><th>Method</th><th>Endpoint</th><th>Pubs/run</th></tr>
+    <tr><td><strong>BIS</strong></td><td>RSS × 3</td><td>bis.org/doclist/*.rss</td><td>~70</td></tr>
+    <tr><td><strong>IMF</strong></td><td>HTML relay</td><td>rss-parrot.net (mirror of IMF)</td><td>~13</td></tr>
+    <tr><td><strong>World Bank</strong></td><td>REST API</td><td>search.worldbank.org/api/v3/wds</td><td>~55</td></tr>
+    <tr><td><strong>CBK</strong></td><td>RSS</td><td>centralbank.go.ke/feed</td><td>~10</td></tr>
+  </table>
+
+  <h3>Collection controls</h3>
+  <div class="grid">
+    <div class="card"><h4>Error isolation</h4><p>Each collector wrapped in <code>safe_fetch()</code>. One source failing does not stop others.</p></div>
+    <div class="card"><h4>Duplicate detection</h4><p>SHA-256 of <code>institution|source_url|title</code> — UNIQUE constraint in DB.</p></div>
+    <div class="card"><h4>Dynamic sources</h4><p>Admins add any RSS URL via the UI — validated before saving.</p></div>
+    <div class="card"><h4>Scheduling</h4><p>Manual (admin button) or automatic (APScheduler, 15 min – 6 hr interval).</p></div>
+  </div>
+</div>
+
+<!-- ============ PAGE 4: AI LAYER ============ -->
+<div class="page">
+  <h2>3. AI &amp; Intelligence Layer</h2>
+  <p class="sub">Local LLM produces structured intelligence for every publication. No external API. No cost.</p>
+
+  <div class="flow">
+    <div class="flow-node">Publication<small>title + abstract</small></div>
+    <span class="arrow">→</span>
+    <div class="flow-node">Prompt Builder<small>per task</small></div>
+    <span class="arrow">→</span>
+    <div class="flow-node">Ollama<small>qwen2.5:3b · 240s timeout</small></div>
+    <span class="arrow">→</span>
+    <div class="flow-node">Validate<small>against topics.py</small></div>
+    <span class="arrow">→</span>
+    <div class="flow-node">Store<small>ai_* columns</small></div>
+  </div>
+
+  <h3>Three AI tasks per publication</h3>
+  <table>
+    <tr><th>Task</th><th>Input</th><th>Output</th></tr>
+    <tr><td><strong>Summarize</strong></td><td>title + 800 chars of abstract</td><td>6-section summary (topic, purpose, findings, developments, policy, relevance)</td></tr>
+    <tr><td><strong>Classify</strong></td><td>title + abstract</td><td>1–3 slugs from 11 canonical topics</td></tr>
+    <tr><td><strong>Relevance</strong></td><td>title + abstract</td><td>2–3 sentences on BoT relevance + disclaimer</td></tr>
+  </table>
+
+  <h3>Three safeguards</h3>
+  <div class="grid">
+    <div class="card"><h4>Fallback engine</h4><p>If Ollama is down → rule-based keyword matching. Pipeline never stalls.</p></div>
+    <div class="card"><h4>Topic validation</h4><p>LLM output is validated against <code>topics.py</code>. Hallucinated slugs dropped.</p></div>
+    <div class="card"><h4>Never empty</h4><p>Institution-aware default topic — every processed publication ends with at least 1 topic.</p></div>
+    <div class="card"><h4>Traceability</h4><p><code>ai_engine</code> column records "ollama" or "rule-based" for every row.</p></div>
+  </div>
+
+  <div class="note">
+    <strong>Model choice:</strong> qwen2.5:3b — small, local, CPU-friendly. Zero API cost, data never leaves the machine. Accuracy ~65–75% top-1 on the manual eval sample.
+  </div>
+</div>
+
+<!-- ============ PAGE 5: API + FRONTEND ============ -->
+<div class="page">
+  <h2>4. API &amp; Presentation Layers</h2>
+
+  <h3>API Layer — FastAPI</h3>
+  <p class="sub">Stateless REST backend. Only the frontend calls this. 25+ endpoints grouped by resource.</p>
+
+  <table>
+    <tr><th>Group</th><th>Endpoints</th></tr>
+    <tr><td><strong>Publications</strong></td><td><code>GET /publications</code>, <code>GET /publications/{id}</code>, filters by source/topic/date</td></tr>
+    <tr><td><strong>Search</strong></td><td><code>GET /search?q=...</code> across title + abstract + AI summary</td></tr>
+    <tr><td><strong>Trends</strong></td><td><code>/trends</code>, <code>/trends/emerging</code>, <code>/trends/timeline</code>, <code>/trends/insights</code>, <code>/trends/glance</code></td></tr>
+    <tr><td><strong>Stats</strong></td><td><code>/stats</code>, <code>/stats/timeline</code> with hidden/orphaned counts</td></tr>
+    <tr><td><strong>Admin</strong></td><td><code>/admin/collect</code>, <code>/admin/logs</code>, <code>/admin/sources</code>, <code>/admin/rules</code>, <code>/admin/alerts</code></td></tr>
+  </table>
+
+  <h3>Presentation Layer — React</h3>
+  <table>
+    <tr><th>Page</th><th>Purpose</th><th>Role</th></tr>
+    <tr><td>Dashboard</td><td>Overview + AI glance + high-relevance</td><td>Analyst</td></tr>
+    <tr><td>Publications</td><td>Browse + filter + sort + detail drawer + CSV export</td><td>Analyst</td></tr>
+    <tr><td>Trends &amp; Insights</td><td>Multi-color line chart + AI narrative</td><td>Analyst</td></tr>
+    <tr><td>Topic Classification</td><td>11 topic tiles → drawer of publications</td><td>Analyst</td></tr>
+    <tr><td>Search &amp; Discover</td><td>Keyword search + query insights</td><td>Analyst</td></tr>
+    <tr><td>Knowledge Base</td><td>Browse by topic / source / time</td><td>Analyst</td></tr>
+    <tr><td>Alerts</td><td>Live system alerts + rule builder</td><td>Both</td></tr>
+    <tr><td>Admin (6 pages)</td><td>Sources · Publications · Topics · Users · Alerts · Dashboard</td><td>Admin</td></tr>
+  </table>
+
+  <div class="note">
+    <strong>Communication:</strong> Frontend calls <code>/api/*</code> → Vite proxies to backend at <code>http://backend:8000</code> inside Docker. No CORS. No hardcoded URLs.
+  </div>
+</div>
+
+<!-- ============ PAGE 6: DATABASE — ER DIAGRAM ============ -->
+<div class="page">
+  <h2>5. Database Design — Entity Relationship</h2>
+  <p class="sub">SQLite + SQLAlchemy 2.0. Four tables. File: <code>backend/observatory.db</code></p>
+
+  <div class="er">
+    <div class="er-box">
+      <h4>📄 publications</h4>
+      <ul>
+        <li><span class="pk">id</span><span class="type">INT PK</span></li>
+        <li>title<span class="type">STR</span></li>
+        <li>institution<span class="type">STR·IDX</span></li>
+        <li>source_url<span class="type">STR</span></li>
+        <li>published_date<span class="type">DT·IDX</span></li>
+        <li>document_type<span class="type">STR</span></li>
+        <li>abstract<span class="type">TEXT</span></li>
+        <li>raw_content<span class="type">TEXT</span></li>
+        <li><span class="pk">fingerprint</span><span class="type">STR·UNIQ</span></li>
+        <li>ai_summary<span class="type">TEXT</span></li>
+        <li>ai_topics<span class="type">STR</span></li>
+        <li>ai_relevance<span class="type">TEXT</span></li>
+        <li>ai_processed<span class="type">BOOL</span></li>
+        <li>ai_engine<span class="type">STR</span></li>
+        <li>hidden<span class="type">BOOL·IDX</span></li>
+        <li>manual<span class="type">BOOL</span></li>
+        <li>collected_at<span class="type">DT</span></li>
+      </ul>
+    </div>
+
+    <div class="er-box">
+      <h4>🌐 sources</h4>
+      <ul>
+        <li><span class="pk">id</span><span class="type">INT PK</span></li>
+        <li>name<span class="type">STR·UNIQ</span></li>
+        <li>url<span class="type">STR</span></li>
+        <li>method<span class="type">STR</span></li>
+        <li>active<span class="type">BOOL</span></li>
+        <li>builtin<span class="type">BOOL</span></li>
+        <li>added_by<span class="type">STR</span></li>
+        <li>added_at<span class="type">DT</span></li>
+      </ul>
+    </div>
+
+    <div class="er-box">
+      <h4>🔔 alert_rules</h4>
+      <ul>
+        <li><span class="pk">id</span><span class="type">INT PK</span></li>
+        <li>keyword<span class="type">STR</span></li>
+        <li>source<span class="type">STR</span></li>
+        <li>topic<span class="type">STR</span></li>
+        <li>priority<span class="type">STR</span></li>
+        <li>created_by<span class="type">STR</span></li>
+        <li>created_at<span class="type">DT</span></li>
+        <li>active<span class="type">BOOL</span></li>
+      </ul>
+    </div>
+
+    <div class="er-box">
+      <h4>✅ rule_matches</h4>
+      <ul>
+        <li><span class="pk">id</span><span class="type">INT PK</span></li>
+        <li><span class="fk">rule_id</span><span class="type">INT·IDX</span></li>
+        <li><span class="fk">publication_id</span><span class="type">INT·IDX</span></li>
+        <li>matched_at<span class="type">DT</span></li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="note">
+    <strong>Relationships:</strong> Logical (dotted), not enforced FKs. Sources produce publications. Rules match publications via the <code>rule_matches</code> bridge table.
+  </div>
+</div>
+
+<!-- ============ PAGE 7: DATABASE — DESIGN DECISIONS ============ -->
+<div class="page">
+  <h2>6. Database — Design Decisions</h2>
+
+  <h3>Why these choices</h3>
+  <table>
+    <tr><th>Decision</th><th>Reason</th></tr>
+    <tr><td>SQLite over PostgreSQL</td><td>Zero-setup, single file, portable. Swap by changing one env var.</td></tr>
+    <tr><td>Fingerprint UNIQUE</td><td>DB enforces dedup — even if code has a bug, no duplicate rows.</td></tr>
+    <tr><td>AI columns nullable</td><td>Publication stored first; enriched second. Pipeline never blocks on AI.</td></tr>
+    <tr><td>Topics as comma-separated strings</td><td>Fast, simple, good enough. Upgrade path: join table.</td></tr>
+    <tr><td>hidden instead of delete</td><td>Non-destructive. Admins can restore. Traceability preserved.</td></tr>
+    <tr><td>Source table separate from built-ins</td><td>Built-ins have custom parsers. Only dynamic feeds go in the table.</td></tr>
+    <tr><td>Rule matches stored, not computed</td><td>Avoids re-scanning all pubs every time alerts are viewed.</td></tr>
+  </table>
+
+  <h3>Known limitations</h3>
+  <table>
+    <tr><th>Limitation</th><th>Impact</th><th>Fix path</th></tr>
+    <tr><td>Users in memory, not DB</td><td>Logins reset on restart</td><td>Add User model + hashed passwords</td></tr>
+    <tr><td>ai_topics as string</td><td>Harder SQL joins</td><td>Add publication_topics M2M</td></tr>
+    <tr><td>No FK constraints</td><td>Orphan rows possible</td><td>Add ON DELETE CASCADE</td></tr>
+    <tr><td>SQLite write concurrency</td><td>Locks under heavy load</td><td>Switch to PostgreSQL</td></tr>
+  </table>
+
+  <h3>Sample queries</h3>
+  <p><strong>Count by source:</strong> <code>SELECT institution, COUNT(*) FROM publications WHERE hidden=0 GROUP BY institution;</code></p>
+  <p><strong>Fallback rows:</strong> <code>SELECT id, title FROM publications WHERE ai_engine='rule-based';</code></p>
+  <p><strong>Recent rule matches:</strong> <code>SELECT r.keyword, p.title FROM rule_matches m JOIN alert_rules r ON r.id=m.rule_id JOIN publications p ON p.id=m.publication_id ORDER BY m.matched_at DESC LIMIT 10;</code></p>
+
+  <div class="note">
+    <strong>Traceability guarantee:</strong> Every AI-generated output stores its engine and links back to <code>source_url</code> — the original document can always be verified.
+  </div>
+</div>
+
+</body>
+</html>

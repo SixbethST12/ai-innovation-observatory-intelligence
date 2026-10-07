@@ -1,7 +1,7 @@
 /**
  * Search.tsx — Keyword + filter search over all publications.
  */
-import { useState, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   Search as SearchIcon, ExternalLink, Sparkles, Filter, X,
 } from "lucide-react";
@@ -9,7 +9,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { getPublications, type Publication } from "@/lib/api";
+import { getPublications, type Publication , getTopics } from "@/lib/api";
 
 const TOPICS = [
   "monetary_policy", "financial_stability", "banking_regulation",
@@ -33,6 +33,11 @@ const REL_STYLE = {
 } as const;
 
 export default function Search() {
+  const [topicsList, setTopicsList] = useState<string[]>([]);
+  useEffect(() => {
+    getTopics().then(t => setTopicsList(t.map((x: any) => x.slug))).catch(() => {});
+  }, []);
+
   const [allPubs, setAllPubs] = useState<Publication[]>([]);
   const [loaded, setLoaded] = useState(false);
   const [query, setQuery] = useState("");
@@ -163,7 +168,7 @@ export default function Search() {
               <div className="text-xs font-bold uppercase tracking-wider text-gray-500 mb-2">
                 Topic
               </div>
-              {TOPICS.map(t => (
+              {topicsList.map(t => (
                 <label key={t} className="flex items-center gap-2 py-1.5 text-sm cursor-pointer hover:text-[var(--bot-navy)]">
                   <input
                     type="checkbox"
